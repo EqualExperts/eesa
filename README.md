@@ -2,7 +2,7 @@
 
 Scripts and documents for the Equal Experts Space Plane
 
-The [Space Plane](https://equalexperts.com/eesa) is a joint project with Addingha Scouts and Equal Experts.
+The [Space Plane](https://equalexperts.com/eesa) is a joint project with Addingham Scout Group and Equal Experts.
 
 This project is to detail the tech behind the Space Plane and allow people to contribute.
 
