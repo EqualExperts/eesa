@@ -1,0 +1,55 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+    config.vm.box = "ubuntu/trusty64"
+    config.vm.network "private_network", type: "dhcp"
+
+    config.vm.provision "shell", inline: <<-SHELL
+        apt-get -y update
+	apt-get -y install libffi-dev libssl-dev
+        echo "[DroneKit]: Installing build essentials"
+        apt-get -y install build-essential
+        echo "[DroneKit]: Installing Python Devel"
+        apt-get -y install python-dev
+        echo "[DroneKit]: Installing pip ..."
+        apt-get -y install python-pip
+        easy_install -U pip
+        echo "[DroneKit]: Installing python-cherrypy3 ..."
+        apt-get -y install python-cherrypy3
+        echo "[DroneKit]: Installing python-matplotlib ..."
+        apt-get -y install python-matplotlib
+        echo "[DroneKit]: Installing python-gps ..."
+        apt-get -y install python-gps
+        echo "[DroneKit]: Installing Sphinx ... "
+        pip install sphinx
+	apt-get -y install git
+	pip install requests[security]
+	cd /vagrant
+	cd dronekit-python
+        echo "[DroneKit]: Installing DroneKit-Python requirements.txt ... "
+        pip install -r requirements.txt
+        echo "[DroneKit]: Building docs "
+        cd docs/
+        make html
+	cd /home/vagrant
+	git clone git://github.com/ArduPilot/ardupilot.git
+	cd ardupilot
+	git submodule update --init --recursive
+	sudo chown -R vagrant: ardupilot
+	sudo aptitude update
+	sudo apt-get -y install libtool automake autoconf libexpat1-dev
+	sudo apt-get -y install python-matplotlib python-serial python-wxgtk2.8 python-wxtools python-lxml
+	sudo apt-get -y install python-scipy python-opencv ccache gawk git python-pip python-pexpect
+	sudo pip install future pymavlink MAVProxy
+	echo "export PATH=$PATH:$HOME/jsbsim/src:$HOME/ardupilot/Tools/autotest:/usr/lib/ccache:$PATH" >> ~/.bashrc
+	. ~/.bashrc
+	cd /home/vagrant
+	git clone git://github.com/tridge/jsbsim.git
+	cd jsbsim
+	./autogen.sh --enable-libraries
+	make
+	cd /home/vagrant
+	sudo chown -R vagrant: jsbsim
+    SHELL
+end
