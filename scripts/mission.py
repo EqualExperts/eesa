@@ -1,7 +1,7 @@
 from __future__ import print_function
 from threading import Timer
 import sys
-import Thread
+from thread import start_new_thread
 
 # TODO Nicer way to import bleeding edge libraries?
 sys.path.append("/home/apsync/dronekit-python/")
@@ -11,7 +11,8 @@ import time
 from dronekit import connect, VehicleMode, mavutil
 
 # TODO Setup SITL so it can be tested locally instead of on the Pixhawk
-connection_string = '0.0.0.0:9000'
+connection_string = '0.0.0.0:14550' # sitl
+# connection_string = '0.0.0.0:9000' # onboard Edison
 closed_pwm = 1000
 open_pwm = 1800
 servo_number = 9  # aux 1
@@ -35,16 +36,13 @@ def set_servo(pwm_value):
     )
     vehicle.send_mavlink(msg)
 
-
 # Moves servo 9 (aux 1) to release payload
 def release_payload():
-    Thread.start_new_thread(set_servo(open_pwm))
-
+    start_new_thread(set_servo, (open_pwm,))
 
 # Moves servo 9 (aux 1) to closed to hold payload
 def lock_payload():
-    Thread.start_new_thread(set_servo(open_pwm))
-
+    start_new_thread(set_servo, (closed_pwm,))
 
 print("Connecting to plane on %s" % (connection_string,))
 vehicle = connect(connection_string)
@@ -57,7 +55,7 @@ print(" System status: %s" % vehicle.system_status.state)
 print(" Mode: %s" % vehicle.mode.name)
 
 # Make sure the payload release is in the closed position
-lock_payload(vehicle)
+lock_payload()
 
 # Calculate relative altitude only for low level tests.
 # WARNING This can't be used for long duration flights in-case the script restarts
