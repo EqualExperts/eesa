@@ -1,9 +1,11 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+
 Vagrant.configure(2) do |config|
     config.vm.box = "ubuntu/trusty64"
     config.vm.network "private_network", type: "dhcp"
+    config.vm.network "forwarded_port", guest: 5503, host: 5503, protocol: "udp"
 
     config.vm.provision "shell", inline: <<-SHELL
         apt-get -y update

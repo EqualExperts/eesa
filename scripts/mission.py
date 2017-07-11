@@ -13,7 +13,7 @@ from dronekit import connect as drone_connect, mavutil, VehicleMode
 
 class Drone(object):
 
-    def __init__(self, connection_string, release_altitude=10):
+    def __init__(self, connection_string, release_altitude=50):
         self.connection_string = connection_string
         self.closed_pwm = 1200
         self.open_pwm = 1850
@@ -65,31 +65,31 @@ class Drone(object):
         print(" System status: %s" % self.connection.system_status.state)
         print(" Mode: %s" % self.connection.mode.name)
 
+    def stop(self):
+        return os.path.isfile("/home/apsync/stopmission")
+
     def autopilot(self):
         # Make sure the payload release is in the closed position
         self.lock_payload()
 
         # Calculate relative altitude only for low level tests.
         # WARNING This can't be used for long duration flights in-case the script restarts
-        startalt = None
-        while not startalt:
+        while not self.connection.location.global_relative_frame.alt and not self.stop():
+            print( "No GPS signal yet" )
             time.sleep(1)
-            startalt = self.connection.location.global_frame.alt
 
-        stop = False
-
-        while not stop:
-            alt = self.connection.location.global_frame.alt - startalt
+        ## TODO Use @vehicle.on_attribute('location.global_frame') instead?
+        ## See http://python.dronekit.io/automodule.html#dronekit.Locations.global_frame
+        while not self.stop():
+            alt = self.connection.location.global_relative_frame.alt
             print ( "Height %s" % alt )
             if alt >= self.release_altitude:
                 self.release_payload()
                 time.sleep(2)
             self.move_test_servos()
             time.sleep(3)
-            if os.path.isfile("/home/apsync/stopmission"):
-                stop = True
 
-        # Other commands e.g. set flight mode
+            # Other commands e.g. set flight mode
 
         self.connection.close()
 
@@ -98,14 +98,20 @@ def start_flight(connection_string):
     print("Connecting to plane on %s" % (drone.connection_string,))
     connection = drone.connect()
 
+    timeset = 0
+
     @connection.on_message('SYSTEM_TIME')
     def listener(self, name, message):
-        thetime = int(message.time_unix_usec)/1000000
-        if sys.platform in ['linux', 'linux2', 'darwin']:
-            os.system("sudo date +%s -s @%s" % ('%s', thetime))
+        if timeset > 40:
+            thetime = int(message.time_unix_usec)/1000000
+            if sys.platform in ['linux', 'linux2', 'darwin']:
+                os.system("sudo date +%s -s @%s" % ('%s', thetime))
+            timeset = 0
+        timeset += 1
 
     drone.report()
     drone.autopilot()
 
 if __name__ == '__main__':
     start_flight('0.0.0.0:9000')
+
