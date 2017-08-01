@@ -78,14 +78,7 @@ class Drone(object):
             print( "No GPS signal yet" )
             time.sleep(1)
 
-        ## TODO Use @vehicle.on_attribute('location.global_frame') instead?
-        ## See http://python.dronekit.io/automodule.html#dronekit.Locations.global_frame
         while not self.stop():
-            alt = self.connection.location.global_relative_frame.alt
-            print ( "Height %s" % alt )
-            if alt >= self.release_altitude:
-                self.release_payload()
-                time.sleep(2)
             self.move_test_servos()
             time.sleep(3)
 
@@ -101,13 +94,29 @@ def start_flight(connection_string):
     timeset = 0
 
     @connection.on_message('SYSTEM_TIME')
-    def listener(self, name, message):
+    def listenerTime(self, name, message):
         if timeset > 40:
             thetime = int(message.time_unix_usec)/1000000
             if sys.platform in ['linux', 'linux2', 'darwin']:
                 os.system("sudo date +%s -s @%s" % ('%s', thetime))
             timeset = 0
         timeset += 1
+
+    @connection.on_message('GLOBAL_POSITION_INT')
+    def listenerGPS(vehicle, name, message):
+        alt = message.alt/1000
+        print ( "Estimated Altitude %s" % alt )
+        if alt >= connection.release_altitude:
+            print ( "Releasing payload at %s metres AMSL" % alt)
+            connection.release_payload()
+
+    @connection.on_attribute('location.global_frame')
+    def listenerPosition(vehicle, name, message):
+        alt = message.alt/1000
+        print ( "Relative Altitude %s" % alt )
+        if alt >= connection.release_altitude:
+            print ( "Releasing payload at %s metres relative to home" % alt)
+            connection.release_payload()
 
     drone.report()
     drone.autopilot()
