@@ -72,8 +72,8 @@ class Drone(object):
         # Make sure the payload release is in the closed position
         self.lock_payload()
 
-        # Calculate relative altitude only for low level tests.
-        # WARNING This can't be used for long duration flights in-case the script restarts
+        # TODO use GPS Fix = 3D before allowing continue?
+        # TODO check if safety switch activated?
         while not self.connection.location.global_relative_frame.alt and not self.stop():
             print( "No GPS signal yet" )
             time.sleep(1)
@@ -93,6 +93,7 @@ def start_flight(connection_string):
 
     timeset = 0
 
+    #TODO maybe only set the system time when GPS quality is good and only set it once?
     @connection.on_message('SYSTEM_TIME')
     def listenerTime(self, name, message):
         if timeset > 40:
@@ -102,7 +103,7 @@ def start_flight(connection_string):
             timeset = 0
         timeset += 1
 
-    @connection.on_message('GLOBAL_POSITION_INT')
+    @connection.on_attribute('GLOBAL_POSITION_INT')
     def listenerGPS(vehicle, name, message):
         alt = message.alt/1000
         print ( "Estimated Altitude %s" % alt )
