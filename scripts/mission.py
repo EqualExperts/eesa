@@ -3,12 +3,13 @@ import sys
 import os
 import os.path
 from thread import start_new_thread
+import time
+import math
 
 # TODO Nicer way to import bleeding edge libraries?
 sys.path.append("/home/apsync/dronekit-python/")
 print(sys.path)
 
-import time
 from dronekit import connect as drone_connect, mavutil, VehicleMode
 
 class Drone(object):
@@ -91,17 +92,20 @@ def start_flight(connection_string):
     print("Connecting to plane on %s" % (drone.connection_string,))
     connection = drone.connect()
 
-    timeset = 0
-
     #TODO maybe only set the system time when GPS quality is good and only set it once?
     @connection.on_message('SYSTEM_TIME')
     def listenerTime(self, name, message):
-        if timeset > 40:
-            thetime = int(message.time_unix_usec)/1000000
+        gpstime = int(message.time_unix_usec)/1000000
+        systime = int(time.time())
+        difftime = math.fabs(gpstime - systime)
+        print( "gps time %s" % gpstime )
+        print( "sys time %s" % systime )
+        print( "diff %s" % difftime )
+        if difftime > 1000:
+            print("Setting system time to match GPS")
+            # TODO use datetime to set the time
             if sys.platform in ['linux', 'linux2', 'darwin']:
                 os.system("sudo date +%s -s @%s" % ('%s', thetime))
-            timeset = 0
-        timeset += 1
 
     @connection.on_attribute('GLOBAL_POSITION_INT')
     def listenerGPS(vehicle, name, message):
@@ -111,7 +115,7 @@ def start_flight(connection_string):
             print ( "Releasing payload at %s metres AMSL" % alt)
             connection.release_payload()
 
-    @connection.on_attribute('location.global_frame')
+    @connection.on_message('location.global_frame')
     def listenerPosition(vehicle, name, message):
         alt = message.alt/1000
         print ( "Relative Altitude %s" % alt )
@@ -124,4 +128,3 @@ def start_flight(connection_string):
 
 if __name__ == '__main__':
     start_flight('0.0.0.0:9000')
-
