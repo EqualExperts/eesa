@@ -1,9 +1,15 @@
-import dronekit_sitl
+from dronekit_sitl import SITL
 import mission
 
-sitl = dronekit_sitl.start_default()
-connection_string = sitl.connection_string()
+args = ['--model', 'plane',]
 
-mission.start_flight(connection_string)
+sitl = SITL() # load a binary path (optional)
+sitl.download("plane", "3.3.0", verbose=False)
+sitl.launch(args, verbose=False, await_ready=Falses, restart=False)
+sitl.block_until_ready(verbose=False)
 
+mission.start_flight(sitl.connection_string())
+
+code = sitl.complete(verbose=False)
+sitl.poll()
 sitl.stop()

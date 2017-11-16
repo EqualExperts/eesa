@@ -3,29 +3,22 @@
 
 from dronekit import connect, VehicleMode, LocationGlobalRelative
 import time
-# import dronekit_sitl
+import dronekit_sitl
 
 #Set up option parsing to get connection string
 import argparse  
 parser = argparse.ArgumentParser(description='Commands vehicle using vehicle.simple_goto.')
 parser.add_argument('--connect', 
                    help="Vehicle connection target string. If not specified, SITL automatically started and used.")
-parser.add_argument('--altitude', 
-                   help="Target take off height, defaults to 10m.")
 args = parser.parse_args()
 
 connection_string = args.connect
-target_height = args.altitude
-benchtest = False
-
-if not target_height:
-    target_height = 10
+benchtest = True
 
 connection_string = "/dev/serial0"
-target_height = args.altitude
 
-# sitl = dronekit_sitl.start_default()
-# connection_string = sitl.connection_string()
+if benchtest:
+    connection_string = "tcp:127.0.0.1:5760"
 
 # Connect to the Vehicle
 print 'Connecting to vehicle on: %s' % connection_string
@@ -36,7 +29,7 @@ def arm_and_takeoff():
     Arms vehicle and fly to aTargetAltitude.
     """
 
-    aTargetAltitude = 100
+    aTargetAltitude = 120
 
     print "Basic pre-arm checks"
     # Don't try to arm until autopilot is ready
@@ -44,13 +37,17 @@ def arm_and_takeoff():
         print " Waiting for vehicle to initialise..."
         time.sleep(1)
 
-    # vehicle.mode = VehicleMode("GUIDED")
+    if benchtest:
+        vehicle.mode = VehicleMode("GUIDED")
 
     print " Waiting for mode change ..."
     while not vehicle.mode.name=='GUIDED':  #Wait until mode has changed
         print " Waiting for GUIDED mode..."
         time.sleep(1)
-        
+
+    print("Waiting 15 seconds, just in case in GUIDED mode when safety switch pressed")
+    time.sleep(15)
+
     print "Arming motors"
     vehicle.armed = True    
 
@@ -68,7 +65,7 @@ def arm_and_takeoff():
         while True:
             print " Altitude: ", vehicle.location.global_relative_frame.alt 
             #Break and return from function just below target altitude.        
-            if vehicle.location.global_relative_frame.alt>=aTargetAltitude*0.95: 
+            if vehicle.location.global_relative_frame.alt>=aTargetAltitude*0.99:
                 print "Reached target altitude"
                 time.sleep(15)
                 break
@@ -79,7 +76,11 @@ arm_and_takeoff()
 print "Returning to Launch"
 vehicle.mode = VehicleMode("RTL")
 
+while not vehicle.mode.name=='RTL':
+    print " Waiting for RTL mode..."
+    time.sleep(1)
+
 #Close vehicle object before exiting script
-print "Close vehicle object"
+print "RTL Mode. Closing vehicle object"
 vehicle.close()
 
