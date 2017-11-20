@@ -16,7 +16,7 @@ args = parser.parse_args()
 
 connection_string = args.connect
 target_height = args.altitude
-benchtest = False
+benchtest = True
 
 if not target_height:
     target_height = 10
@@ -26,6 +26,8 @@ target_height = args.altitude
 
 # sitl = dronekit_sitl.start_default()
 # connection_string = sitl.connection_string()
+if benchtest:
+    connection_string = "udp:127.0.0.1:5769"
 
 # Connect to the Vehicle
 print 'Connecting to vehicle on: %s' % connection_string
@@ -44,7 +46,8 @@ def arm_and_takeoff():
         print " Waiting for vehicle to initialise..."
         time.sleep(1)
 
-    # vehicle.mode = VehicleMode("GUIDED")
+    if benchtest:
+        vehicle.mode = VehicleMode("GUIDED")
 
     print " Waiting for mode change ..."
     while not vehicle.mode.name=='GUIDED':  #Wait until mode has changed
