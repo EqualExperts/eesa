@@ -70,7 +70,7 @@ class Drone(object):
             self.flight_mission_started = True
             self.log("Starting flight mission")
 
-            self.connection.parameters['RTL_AUTOLAND']=1
+#            self.connection.parameters['RTL_AUTOLAND']=1
 
             self.connection.mode = VehicleMode("RTL")
             while not self.connection.mode.name=='RTL':
