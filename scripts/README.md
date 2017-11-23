@@ -1,5 +1,7 @@
 # Running the drop test simulation
 
+Based on the instructions for setting up SITL on Linix: http://ardupilot.org/dev/docs/setting-up-sitl-on-linux.html Follow the Install Steps on that page before you run the instructions below.
+
 In a new termal, startup the FlightGear simulator with the plane model
 ```
 cd ardupilot/Tools/autotest/
