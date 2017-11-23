@@ -55,7 +55,7 @@ class Drone(object):
         self.log("!!!!!RELEASING PAYLOAD!!!!!")
         start_new_thread(self.set_servo, (self.release_servo_number, self.open_pwm,))
         self.released = True
-        start_new_thread(self.start_flight_mission())
+        start_new_thread(self.start_flight_mission, ())
 
     # Moves servo 9 (aux 1) to closed to hold payload
     def lock_payload(self):
@@ -76,6 +76,7 @@ class Drone(object):
             while not self.connection.mode.name=='RTL':
                 self.log("Waiting for RTL... %s " % self.connection.mode.name)
                 time.sleep(1)
+
             # Fly somewhere
             # Fly somewhere else
             # Land
@@ -124,7 +125,8 @@ class Drone(object):
             time.sleep(1)
 
         while not self.stop():
-            self.move_test_servos()
+            if not self.released:
+                self.move_test_servos()
             time.sleep(3)
 
         logging.shutdown()
