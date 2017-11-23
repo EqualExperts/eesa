@@ -1,5 +1,7 @@
 # Running the drop test simulation
 
+Based on the instructions for setting up SITL on Linix: http://ardupilot.org/dev/docs/setting-up-sitl-on-linux.html Follow the Install Steps on that page before you run the instructions below.
+
 In a new termal, startup the FlightGear simulator with the plane model
 ```
 cd ardupilot/Tools/autotest/
@@ -31,9 +33,9 @@ mode auto
 You should see the plane takeoff and climb.  Once it's reached 684m, the `mission.py` script will change the mode and fly it back to the start.
 
 ## TODO
-Magically increase GPS altitude to simulate a balloon lift
-Move the simulation scripts to ../simulation but still import mission.py
-Make a `simulate_lift.py` script
-`simulate_mission.py` should inject a relative altitude + 100m
+- Magically increase GPS altitude to simulate a balloon lift
+- Move the simulation scripts to ../simulation but still import mission.py
+- Make a `simulate_lift.py` script
+- `simulate_mission.py` should inject a relative altitude + 100m
 
 
