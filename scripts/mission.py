@@ -17,7 +17,7 @@ from dronekit import connect as drone_connect, mavutil, VehicleMode
 
 class Drone(object):
 
-    def __init__(self, connection_string, release_altitude=50):
+    def __init__(self, connection_string, release_altitude=684):
         self.connection_string = connection_string
         self.closed_pwm = 1850
         self.open_pwm = 1200
@@ -70,10 +70,11 @@ class Drone(object):
             self.flight_mission_started = True
             self.log("Starting flight mission")
 
-            rtl = VehicleMode("RTL")
-            while self.connection.mode.name != "RTL":
-                self.log("Waiting for RTL...")
-                self.connection.mode = rtl
+            self.connection.parameters['RTL_AUTOLAND']=1
+
+            self.connection.mode = VehicleMode("RTL")
+            while not self.connection.mode.name=='RTL':
+                self.log("Waiting for RTL... %s " % self.connection.mode.name)
                 time.sleep(1)
             # Fly somewhere
             # Fly somewhere else
@@ -153,27 +154,27 @@ def start_flight(connection_string):
             else:
                 drone.log( "The GPS returned time since boot instead of time since epoch so can't use it for system time" )
 
-##    @connection.on_message('GPS_RAW_INT')
+    @connection.on_message('GPS_RAW_INT')
     def listener_raw_gps(vehicle, name, message):
         alt = message.alt/1000
-        drone.log( "GPS RAW Altitude %s" % alt )
         if alt >= drone.release_altitude and not drone.released:
+            drone.log( "GPS RAW Altitude %s" % alt )
             drone.log ( "Releasing payload at %s metres AMSL RAW" % alt)
             drone.release_payload()
 
     @connection.on_attribute('GLOBAL_POSITION_INT')
     def listener_gps(vehicle, name, message):
         alt = message.alt/1000
-        drone.log( "Estimated Altitude %s" % alt )
         if alt >= drone.release_altitude and not drone.released:
+            drone.log( "Estimated Altitude %s" % alt )
             drone.log ( "%s Releasing payload at %s metres AMSL" % (time.time(),alt))
             drone.release_payload()
 
     @connection.on_attribute('location.global_frame')
     def listener_position(vehicle, name, message):
         alt = message.alt/1000
-        drone.log( "Relative Altitude %s" % alt )
         if alt >= drone.release_altitude and not drone.released:
+            drone.log( "Relative Altitude %s" % alt )
             drone.log ( "Releasing payload at %s metres relative to home" % alt)
             drone.release_payload()
         else:
