@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import sys
+sys.path.append("../scripts")
 import mission
 from dronekit import connect as drone_connect, mavutil, VehicleMode
 
