@@ -11,12 +11,17 @@ parser = argparse.ArgumentParser(description='Commands vehicle using vehicle.sim
 parser.add_argument('--connect', 
                    help="Vehicle connection target string. If not specified, SITL automatically started and used.")
 parser.add_argument('--altitude', 
-                   help="Target take off height, defaults to 10m.")
+                   help="Target release altitude defaults to 100m.", default=100,type=int)
+parser.add_argument('--hover', 
+                   help="Time to hover at release altitude, defaults to 30 seconds.", default=30, type=int)
+parser.add_argument('--benchtest', 
+                   help="Run as a sitl script", action="store_true");
 args = parser.parse_args()
 
 connection_string = args.connect
 target_height = args.altitude
-benchtest = True
+benchtest = args.benchtest
+hover_time = args.hover
 
 if not target_height:
     target_height = 10
@@ -27,6 +32,7 @@ target_height = args.altitude
 # sitl = dronekit_sitl.start_default()
 # connection_string = sitl.connection_string()
 if benchtest:
+    print("Running benchtest script to connect to SITL")
     connection_string = "udp:127.0.0.1:5769"
 
 # Connect to the Vehicle
@@ -72,8 +78,8 @@ def arm_and_takeoff():
             print " Altitude: ", vehicle.location.global_relative_frame.alt 
             #Break and return from function just below target altitude.        
             if vehicle.location.global_relative_frame.alt>=aTargetAltitude*0.95: 
-                print "Reached target altitude"
-                time.sleep(15)
+                print("Reached target altitude, hovering for %s seconds" % hover_time)
+                time.sleep(hover_time)
                 break
             time.sleep(1)
 
