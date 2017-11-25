@@ -17,7 +17,7 @@ from dronekit import connect as drone_connect, mavutil, VehicleMode
 
 class Drone(object):
 
-    def __init__(self, connection_string, release_altitude=684):
+    def __init__(self, connection_string, release_altitude):
         self.connection_string = connection_string
         self.closed_pwm = 1850
         self.open_pwm = 1200
@@ -132,8 +132,8 @@ class Drone(object):
         logging.shutdown()
         self.connection.close()
 
-def start_flight(connection_string):
-    drone = Drone(connection_string)
+def start_flight(connection_string, release_altitude=100):
+    drone = Drone(connection_string, release_altitude)
     drone.log("Connecting to plane on %s" % (drone.connection_string,))
     connection = drone.connect()
     nowish = 1501926112 # Aug 5th 2017
@@ -160,26 +160,10 @@ def start_flight(connection_string):
     def listener_raw_gps(vehicle, name, message):
         alt = message.alt/1000
         if alt >= drone.release_altitude and not drone.released:
-            drone.log( "GPS RAW Altitude %s" % alt )
             drone.log ( "Releasing payload at %s metres AMSL RAW" % alt)
             drone.release_payload()
-
-    @connection.on_attribute('GLOBAL_POSITION_INT')
-    def listener_gps(vehicle, name, message):
-        alt = message.alt/1000
-        if alt >= drone.release_altitude and not drone.released:
-            drone.log( "Estimated Altitude %s" % alt )
-            drone.log ( "%s Releasing payload at %s metres AMSL" % (time.time(),alt))
-            drone.release_payload()
-
-    @connection.on_attribute('location.global_frame')
-    def listener_position(vehicle, name, message):
-        alt = message.alt/1000
-        if alt >= drone.release_altitude and not drone.released:
-            drone.log( "Relative Altitude %s" % alt )
-            drone.log ( "Releasing payload at %s metres relative to home" % alt)
-            drone.release_payload()
-        else:
+        elif not drone.released:
+            drone.log( "GPS RAW Altitude %s" % alt )
             drone.twitch_release_servo()
 
     drone.report()
