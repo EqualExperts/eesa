@@ -6,7 +6,7 @@ from thread import start_new_thread
 import time
 import math
 import random
-
+import argparse
 import logging
 from logging.handlers import RotatingFileHandler
 
@@ -17,7 +17,7 @@ from dronekit import connect as drone_connect, mavutil, VehicleMode
 
 class Drone(object):
 
-    def __init__(self, connection_string, release_altitude):
+    def __init__(self, connection_string, release_altitude, relative_altitude):
         self.connection_string = connection_string
         self.closed_pwm = 1850
         self.open_pwm = 1200
@@ -25,6 +25,7 @@ class Drone(object):
         self.release_servo_number = 9 # aux 1
         self.test_servo_numbers = [11,12,13]
         self.release_altitude = release_altitude
+        self.relative_altitude = relative_altitude
         self.current_test_servo_pwm = self.closed_pwm
         self.released = False
         self.flight_mission_started = False
@@ -126,14 +127,13 @@ class Drone(object):
 
         while not self.stop():
             if not self.released:
-                self.move_test_servos()
-            time.sleep(3)
+                time.sleep(3)
 
         logging.shutdown()
         self.connection.close()
 
-def start_flight(connection_string, release_altitude=100):
-    drone = Drone(connection_string, release_altitude)
+def start_flight(connection_string, release_altitude=100, relative_altitude=True):
+    drone = Drone(connection_string, release_altitude, relative_altitude)
     drone.log("Connecting to plane on %s" % (drone.connection_string,))
     connection = drone.connect()
     nowish = 1501926112 # Aug 5th 2017
@@ -158,17 +158,44 @@ def start_flight(connection_string, release_altitude=100):
 
     @connection.on_message('GPS_RAW_INT')
     def listener_raw_gps(vehicle, name, message):
-        alt = message.alt/1000
-        if alt >= drone.release_altitude and not drone.released:
-            drone.log ( "Releasing payload at %s metres AMSL RAW" % alt)
-            drone.release_payload()
-        elif not drone.released:
-            drone.log( "GPS RAW Altitude %s" % alt )
-            drone.twitch_release_servo()
+        if not drone.relative_altitude:
+          alt = message.alt/1000
+          if alt >= drone.release_altitude and not drone.released:
+              drone.log ( "Releasing payload at %s metres AMSL RAW" % alt)
+              drone.release_payload()
+          elif not drone.released:
+              drone.log( "GPS RAW Altitude %s" % alt )
+              drone.twitch_release_servo()
+
+    @connection.on_attribute('location.global_relative_frame')
+    def listener_relative_altitude(vehicle, name, message):
+        if drone.relative_altitude:
+          alt = message.alt
+          if alt >= drone.release_altitude and not drone.released:
+              drone.log ( "Releasing payload at %s metres relative to home" % alt)
+              drone.release_payload()
+          elif not drone.released:
+              drone.log( "Relative Altitude %s" % alt )
+              drone.twitch_release_servo()
 
     drone.report()
     drone.autopilot()
 
 if __name__ == '__main__':
-    start_flight('0.0.0.0:9000')
+    parser = argparse.ArgumentParser(description='Space Mission!!')
+    parser.add_argument('--altitude',
+                   help="Target release altitude defaults to 100m.", default=100,type=int)
+    parser.add_argument('--relative',
+                   help="Altitude above home location.  Good for field testing", action="store_true");
+    parser.add_argument('--connection',
+                   help="Connection string to use for pixhawk or sitl connection", default="0.0.0.0:9000");
+    args = parser.parse_args()
+
+    target_altitude = args.altitude
+    relative_altitude = args.relative
+    connection = args.connection
+
+    print( "Target alt = %s, relative to home? %s" % (target_altitude, relative_altitude) )
+
+    start_flight(connection, target_altitude, relative_altitude)
 
