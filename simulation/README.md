@@ -30,14 +30,14 @@ FlightGear version 2017.3.1 is working well for me.  It seems more likely to wor
 In another termal window, start a simulated plane and add an extra MAVLink output to localhost port 5769
 ```
 cd ardupilot/ArduPlane
-sim_vehicle.py --out 127.0.0.:5769 -j4
+sim_vehicle.py --out 127.0.0.1:5769 -j4
 ```
 If you see a black FlightGear screen, you may need to switch the  Environment->Time->Midday 
 
 In yet another terminal run the dronekit script to start the mission:
 ```
-cd ~/eesa/scripts
-python ./simulate_mission.py
+cd ~/eesa/simulation
+./simulate_mission.sh
 ```
 
 Back in the `sim_vehicle.py` terminal, there should be a `MANUAL>` prompt.  If not, press enter to show it.  The `simulate_mission.py` will now be waiting for an altitude of 654m.  I've not found a way to increase altitude without flying a mission, so a mission it is - at the `MANUAL>` prompt, enter the following:
