@@ -1,0 +1,30 @@
+{
+  "sites":[
+    {
+      "id":"Alternative Site - Top of hill",
+      "start":{
+        "lat":1234.567,
+        "long":9876.432,
+        "alt":233
+      },
+      "land":{
+        "lat":1234.599,
+        "long":9876.499,
+        "alt":203
+      }
+    },
+    {
+      "id":"Alternative Site - Field West",
+      "start":{
+        "lat":1234.567,
+        "long":9876.432,
+        "alt":133
+      },
+      "land":{
+        "lat":1234.599,
+        "long":9876.499,
+        "alt":103
+      }
+    }
+  ]
+}
