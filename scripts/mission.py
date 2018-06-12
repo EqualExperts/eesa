@@ -19,15 +19,18 @@ class Drone(object):
 
     def __init__(self, connection_string, release_altitude=50):
         self.connection_string = connection_string
-        self.closed_pwm = 1850
-        self.open_pwm = 1200
-        self.twitch=20
+        self.closed_pwm = 1890
+        self.open_pwm = 1300
+        self.twitch=10
         self.release_servo_number = 9 # aux 1
-        self.test_servo_numbers = [11,12,13]
+        self.test_servo_numbers = []
+        # self.test_servo_numbers = [11,12,13]
         self.release_altitude = release_altitude
         self.current_test_servo_pwm = self.closed_pwm
         self.released = False
         self.flight_mission_started = False
+
+	self.home_alt = -1
 
         logging.basicConfig(format='%(asctime)-15s %(clientip)s %(user)-8s %(message)s')
         self.logger = logging.getLogger('mission_log')
@@ -55,7 +58,7 @@ class Drone(object):
         self.log("!!!!!RELEASING PAYLOAD!!!!!")
         start_new_thread(self.set_servo, (self.release_servo_number, self.open_pwm,))
         self.released = True
-        start_new_thread(self.start_flight_mission())
+        start_new_thread(self.start_flight_mission, ())
 
     # Moves servo 9 (aux 1) to closed to hold payload
     def lock_payload(self):
@@ -70,10 +73,10 @@ class Drone(object):
             self.flight_mission_started = True
             self.log("Starting flight mission")
 
-            rtl = VehicleMode("RTL")
-            while self.connection.mode.name != "RTL":
-                self.log("Waiting for RTL...")
-                self.connection.mode = rtl
+            takeoff = VehicleMode("AUTO")
+            while self.connection.mode.name != "AUTO":
+                self.log("Waiting for AUTO...")
+                self.connection.mode = takeoff
                 time.sleep(1)
             # Fly somewhere
             # Fly somewhere else
@@ -112,17 +115,31 @@ class Drone(object):
     def stop(self):
         return os.path.isfile("/home/apsync/stopmission")
 
+    def release_now(self):
+        return os.path.isfile("/home/apsync/releasenow")
+
     def autopilot(self):
-        # Make sure the payload release is in the closed position
-        self.lock_payload()
 
         # TODO use GPS Fix = 3D before allowing continue?
         # TODO check if safety switch activated?
-        while not self.connection.location.global_relative_frame.alt and not self.stop():
-            self.log( "No GPS signal yet" )
-            time.sleep(1)
+        while not self.connection.is_armable and not self.stop():
+            self.log( "Initialising...." )
+            time.sleep(5)
+
+	self.log("Desired release altitude = %s" % self.release_altitude )
+
+        # Make sure the payload release is in the closed position
+        self.lock_payload()
+
+	while not self.connection.armed and not self.stop():
+	    self.log( "Waiting for aircraft to be armed...." )
+            time.sleep(5)
 
         while not self.stop():
+            if self.release_now():
+                self.release_payload()
+                time.sleep(10)
+                break;
             self.move_test_servos()
             time.sleep(3)
 
@@ -156,7 +173,7 @@ def start_flight(connection_string):
 ##    @connection.on_message('GPS_RAW_INT')
     def listener_raw_gps(vehicle, name, message):
         alt = message.alt/1000
-        drone.log( "GPS RAW Altitude %s" % alt )
+        drone.log( "RAW Alt %s" % alt )
         if alt >= drone.release_altitude and not drone.released:
             drone.log ( "Releasing payload at %s metres AMSL RAW" % alt)
             drone.release_payload()
@@ -164,17 +181,23 @@ def start_flight(connection_string):
     @connection.on_attribute('GLOBAL_POSITION_INT')
     def listener_gps(vehicle, name, message):
         alt = message.alt/1000
-        drone.log( "Estimated Altitude %s" % alt )
+        drone.log( "Est Alt %s" % alt )
         if alt >= drone.release_altitude and not drone.released:
             drone.log ( "%s Releasing payload at %s metres AMSL" % (time.time(),alt))
             drone.release_payload()
 
     @connection.on_attribute('location.global_frame')
     def listener_position(vehicle, name, message):
-        alt = message.alt/1000
-        drone.log( "Relative Altitude %s" % alt )
-        if alt >= drone.release_altitude and not drone.released:
-            drone.log ( "Releasing payload at %s metres relative to home" % alt)
+        alt = message.alt
+	if drone.home_alt == -1:
+	    drone.home_alt = alt
+	    drone.log("Set home alt to %s" % drone.home_alt)
+	rel_alt = alt - drone.home_alt
+	ts = int(time.time()*10)
+	if ts % 10 == 0:
+            drone.log( "Rel Alt %s" % rel_alt )
+        if rel_alt >= drone.release_altitude and not drone.released:
+            drone.log ( "Releasing payload at %s metres relative to home" % rel_alt)
             drone.release_payload()
         else:
             drone.twitch_release_servo()
