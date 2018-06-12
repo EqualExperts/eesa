@@ -3,7 +3,7 @@
 
 from dronekit import connect, VehicleMode, LocationGlobalRelative
 import time
-# import dronekit_sitl
+import dronekit_sitl
 
 #Set up option parsing to get connection string
 import argparse  
@@ -27,7 +27,6 @@ if not target_height:
     target_height = 10
 
 connection_string = "/dev/serial0"
-target_height = args.altitude
 
 # sitl = dronekit_sitl.start_default()
 # connection_string = sitl.connection_string()
@@ -44,7 +43,7 @@ def arm_and_takeoff():
     Arms vehicle and fly to aTargetAltitude.
     """
 
-    aTargetAltitude = 100
+    aTargetAltitude = 120
 
     print "Basic pre-arm checks"
     # Don't try to arm until autopilot is ready
@@ -59,7 +58,10 @@ def arm_and_takeoff():
     while not vehicle.mode.name=='GUIDED':  #Wait until mode has changed
         print " Waiting for GUIDED mode..."
         time.sleep(1)
-        
+
+    print("Waiting 15 seconds, just in case in GUIDED mode when safety switch pressed")
+    time.sleep(15)
+
     print "Arming motors"
     vehicle.armed = True    
 
@@ -88,7 +90,11 @@ arm_and_takeoff()
 print "Returning to Launch"
 vehicle.mode = VehicleMode("RTL")
 
+while not vehicle.mode.name=='RTL':
+    print " Waiting for RTL mode..."
+    time.sleep(1)
+
 #Close vehicle object before exiting script
-print "Close vehicle object"
+print "RTL Mode. Closing vehicle object"
 vehicle.close()
 
