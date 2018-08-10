@@ -6,7 +6,7 @@ from thread import start_new_thread
 import time
 import math
 import random
-import argparse
+
 import logging
 from logging.handlers import RotatingFileHandler
 
@@ -17,16 +17,15 @@ from dronekit import connect as drone_connect, mavutil, VehicleMode
 
 class Drone(object):
 
-    def __init__(self, connection_string, release_altitude, relative_altitude):
+    def __init__(self, connection_string, release_altitude=50):
         self.connection_string = connection_string
         self.closed_pwm = 1890
-        self.open_pwm = 1300
+        self.open_pwm = 1280
         self.twitch=10
         self.release_servo_number = 9 # aux 1
         self.test_servo_numbers = []
         # self.test_servo_numbers = [11,12,13]
         self.release_altitude = release_altitude
-        self.relative_altitude = relative_altitude
         self.current_test_servo_pwm = self.closed_pwm
         self.released = False
         self.flight_mission_started = False
@@ -74,15 +73,52 @@ class Drone(object):
             self.flight_mission_started = True
             self.log("Starting flight mission")
 
+            self.connection.mode    = VehicleMode("FBWA")
+            while self.connection.mode.name != "FBWA":
+                self.log("Waiting for FBWA...")
+                time.sleep(1)
+
+            self.connection.armed   = True
+
+            # Confirm vehicle armed before attempting to take off
+            #while not self.connection.armed:
+            #    self.log(" Waiting for arming...")
+            #    time.sleep(1)
+
             takeoff = VehicleMode("AUTO")
             while self.connection.mode.name != "AUTO":
                 self.log("Waiting for AUTO...")
                 self.connection.mode = takeoff
                 time.sleep(1)
 
-            # Fly somewhere
-            # Fly somewhere else
+            time.sleep(5)
+
+            #GUIDED after take-off
+            self.connection.mode = VehicleMode("GUIDED")
+            while self.connection.mode.name != "GUIDED":
+                self.log("Waiting for GUIDED...")
+                time.sleep(1)
+
+            set_home()
+
+            self.connection.mode = VehicleMode("RTL")
+
+            # TODO Load mission(s)
             # Land
+
+    def set_home():
+        msg = self.message_factory.command_long_encode(
+            0, 0,
+            mavutil.mavlink.MAV_CMD_DO_SET_HOME,
+            0,
+            2, 
+            0, 0, 0,
+            55.806312,
+            -3.247739,
+            260
+        )
+        self.send_mavlink(msg)
+        self.flush()
 
     # Twitches servo 9 (aux 1) a random amount to keep it warm on the way up
     def twitch_release_servo(self):
@@ -133,7 +169,7 @@ class Drone(object):
         # Make sure the payload release is in the closed position
         self.lock_payload()
 
-	while not self.connection.armed and not self.stop():
+	while self.connection.armed and not self.stop():
 	    self.log( "Waiting for aircraft to be armed...." )
             time.sleep(5)
 
@@ -148,8 +184,8 @@ class Drone(object):
         logging.shutdown()
         self.connection.close()
 
-def start_flight(connection_string, release_altitude=100, relative_altitude=True):
-    drone = Drone(connection_string, release_altitude, relative_altitude)
+def start_flight(connection_string):
+    drone = Drone(connection_string)
     drone.log("Connecting to plane on %s" % (drone.connection_string,))
     connection = drone.connect()
     nowish = 1501926112 # Aug 5th 2017
@@ -172,7 +208,7 @@ def start_flight(connection_string, release_altitude=100, relative_altitude=True
             else:
                 drone.log( "The GPS returned time since boot instead of time since epoch so can't use it for system time" )
 
-    @connection.on_message('GPS_RAW_INT')
+##    @connection.on_message('GPS_RAW_INT')
     def listener_raw_gps(vehicle, name, message):
         alt = message.alt/1000
         drone.log( "RAW Alt %s" % alt )
@@ -208,20 +244,5 @@ def start_flight(connection_string, release_altitude=100, relative_altitude=True
     drone.autopilot()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Space Mission!!')
-    parser.add_argument('--altitude',
-                   help="Target release altitude defaults to 100m.", default=100,type=int)
-    parser.add_argument('--relative',
-                   help="Altitude above home location.  Good for field testing", action="store_true");
-    parser.add_argument('--connection',
-                   help="Connection string to use for pixhawk or sitl connection", default="0.0.0.0:9000");
-    args = parser.parse_args()
-
-    target_altitude = args.altitude
-    relative_altitude = args.relative
-    connection = args.connection
-
-    print( "Target alt = %s, relative to home? %s" % (target_altitude, relative_altitude) )
-
-    start_flight(connection, target_altitude, relative_altitude)
+    start_flight('0.0.0.0:9000')
 

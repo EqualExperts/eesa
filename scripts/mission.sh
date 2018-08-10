@@ -3,6 +3,7 @@
 cd /home/apsync
 until [ -f /home/apsync/stopmission ]
 do
+  rm releasenow stopmission
   gzip -c mission.log  > mission.log."$(date +%s)".gz;
   python mission.py 2>&1 > mission.log
   sleep 5
