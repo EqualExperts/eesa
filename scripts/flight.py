@@ -1,6 +1,13 @@
 import time
+import sys
+import os
+import os.path
+sys.path.append("/home/apsync/dronekit-python/")
+from dronekit import VehicleMode, Command
 
 class Flight(object):
+
+	home = { 'latitude': 123.456, 'longitude': 567.890, 'altitude': 90 }
 
 	min_alt=2000
 	max_alt=30000
@@ -17,46 +24,43 @@ class Flight(object):
 	minimum_calculated_max_pitch=0
 	maximum_calculated_max_pitch=4
 
+	altitude_step=100
+	
 	def __init__(self, vehicle, alt)
 		self.vehicle = vehicle
-		self.alt = alt
-		self.set_home(??????)
+		self.alt(alt)
+		self.set_home()
 		self.vehicle.parameters['TKOFF_THR_MINACC']=2
 		self.vehicle.parameters['LIM_PITCH_MAX']=0 #(i.e. can't climb)
-		self.vehicle.parameters['LIM_PITCH_MIN']=9000 #(straight down)
-		self.vehicle.parameters['TRIM_THROTTLE']=5 ???? Max throttle ????
+		self.vehicle.parameters['LIM_PITCH_MIN']=-9000 #(straight down)
+		self.vehicle.parameters['TRIM_THROTTLE']=5
+		self.vehicle.parameters['THR_MAX']=5
 		self.vehicle.parameters['STAB_PITCH_DOWN']=15
 		self.vehicle.parameters['ARSPD_FBW_MIN']=100 #(max for ardupilot)
 		self.vehicle.parameters['ARSPD_FBW_MIN']=90
 		self.vehicle.parameters['TRIM_ARSPD_CM']=9500
-		self.vehicle.parameters['THR_MAX']=5
 		self.vehicle.parameters['ARSPD_USE']=0
 
 	def alt(self,alt)
 		self.alt = alt
 	
-	def takeoff(self,vehicle):
-		self.alt=self.vehicle.location.global_relative_frame
-		if alt > 10000m 
-			wait 10 seconds
-			Load mission (take-off [to current altitude-500] + rtl)
-		else
-			Load mission (take-off [to current altitude+20] + rtl)
-	
-		self.vehicle.armed = True
-		time.sleep(1)
+	def takeoff(self):
+		self.arm()
 
+		self.alt=self.vehicle.location.global_relative_frame.alt
+		if self.alt > min_alt 
+			time.sleep(5) # wait for a little speed to build up
+		self.load_mission()
+	
 		change_mode("AUTO")
 	
 		self.log("Delaying to allow takeoff to happen")
 		time.sleep(5)
 	
-		change_mode("GUIDED")
-		
 		## ????  Use global_rel_frame or inject alt from listener ????
-		alt=self.vehicle.location.global_relative_frame
-		while self.alt > 2000:
-			if alt > 5000:
+		self.alt=self.vehicle.location.global_relative_frame.alt
+		while self.alt > min_alt:
+			if self.alt < 5000:
 				self.vehicle.parameters['ARSPD_USE']=1
 
 			## Calculate graduated target speed, stall speed, throttle and pitch
@@ -72,16 +76,16 @@ class Flight(object):
 			print ("Alt "+str(alt)+"m, "+str(int(mission_percentage))+"%, throttle "+str(throttle)+"%")
 			print ("----")
 
-			self.vehicle.parameters['LIM_PITCH_MAX'] = max_pitch
-			self.vehicle.parameters['LIM_PITCH_MIN'] = min_pitch
-			self.vehicle.parameters['TRIM_THROTTLE']=throttle # ???? Max throttle ????
-			self.vehicle.parameters['THR_MAX']=throttle+10 # ???? Max throttle ????
+			self.vehicle.parameters['LIM_PITCH_MAX']=max_pitch
+			self.vehicle.parameters['LIM_PITCH_MIN']=0-min_pitch
+			self.vehicle.parameters['TRIM_THROTTLE']=throttle
+			self.vehicle.parameters['THR_MAX']=throttle+10
 			self.vehicle.parameters['ARSPD_FBW_MAX']=max_speed
 			self.vehicle.parameters['ARSPD_FBW_MIN']=min_speed
 			self.vehicle.parameters['TRIM_ARSPD_CM']=target_speed*100
-			goto home lat/long with altitude = (current - 100)
+			goto_altitude(self.alt - self.altitude_step)
 			time.sleep(60)
-			alt=self.vehicle.location.global_relative_frame
+			alt=self.vehicle.location.global_relative_frame.alt
 	
 		## Last approach to primary landing site
 		self.vehicle.parameters['ARSPD_USE']=1
@@ -91,14 +95,14 @@ class Flight(object):
 		self.vehicle.parameters['STAB_PITCH_DOWN']=2
 		
 		self.vehicle.parameters['LIM_PITCH_MAX']=4 # ???? Whats the default ???
-		self.vehicle.parameters['LIM_PITCH_MIN']=4500 # ???? Whats the default ???
-		self.vehicle.parameters['TRIM_THROTTLE']=33 # ???? Max throttle ????
-		self.vehicle.parameters['THR_MAX']=75 # ???? Max throttle ????
+		self.vehicle.parameters['LIM_PITCH_MIN']=-4500 # ???? Whats the default ???
+		self.vehicle.parameters['TRIM_THROTTLE']=33
+		self.vehicle.parameters['THR_MAX']=75
 		
 		self.change_mode("RTL")
 
 		while alt > 0:
-			time.sleep(30)
+			time.sleep(300)
 
 	def change_mode(self, mode_name):
 		mode = VehicleMode(mode_name)
@@ -107,7 +111,7 @@ class Flight(object):
 			self.vehicle.mode = mode
 			time.sleep(1)
 	
-	def set_home(self,latitude, longitude, altitude):
+	def set_home(self)
 		while not vehicle.home_location:
 			cmds = vehicle.commands
 			cmds.download()
@@ -117,9 +121,26 @@ class Flight(object):
 				time.sleep(1)
 		print "Old home location: %s" % vehicle.home_location
 
-		vehicle.home_location=LocationGlobal(latitude,longitude,altitude)
+		vehicle.home_location=LocationGlobal(self.home.latitude, self.home.longitude, self.home.altitude)
 
-	def launch(self):
+	def load_mission(self):
+		self.alt=self.vehicle.location.global_relative_frame.alt
+		take_off_alt=100
+		if self.alt > 100:
+			tak_off_alt=0
 		cmds = self.vehicle.commands
 		cmds.clear()
-		cmds.add(Command( 0, 0, 0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+		cmds.add(Command( 0, 0, 0, mavutil.mavlink.MAV_FRAME_GLOBAL, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 0, 0, 0, 0, 0, 0, take_off_alt))
+		self.vehicle.flush()
+
+	def goto_altitude(self, target_altitude):
+		change_mode("GUIDED")
+		point = LocationGlobal(self.home.latitude, self.home.longitude, target_altitude)
+		vehicle.simple_goto(point)
+
+	def arm(self):
+		change_mode("FBWA")
+		self.vehicle.armed=True
+	    while not vehicle.armed:
+	        print(" Waiting for arming...")
+	        time.sleep(1)
