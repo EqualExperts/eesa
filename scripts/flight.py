@@ -9,8 +9,8 @@ class Flight(object):
 
 	home = { 'latitude': 123.456, 'longitude': 567.890, 'altitude': 90 }
 
-	min_alt=2000
-	max_alt=30000
+	min_release_alt=2000
+	max_release_alt=30000
 	min_throttle=5
 	max_throttle=75
 	minimum_calculated_target_speed=15
@@ -48,7 +48,7 @@ class Flight(object):
 		self.arm()
 
 		self.alt=self.vehicle.location.global_relative_frame.alt
-		if self.alt > min_alt 
+		if self.alt > min_release_alt 
 			time.sleep(5) # wait for a little speed to build up
 		self.load_mission()
 	
@@ -59,22 +59,24 @@ class Flight(object):
 	
 		## ????  Use global_rel_frame or inject alt from listener ????
 		self.alt=self.vehicle.location.global_relative_frame.alt
-		while self.alt > min_alt:
+		while self.alt > min_release_alt:
 			if self.alt < 5000:
+				## Only use airspeed sensor when below 5km
 				self.vehicle.parameters['ARSPD_USE']=1
 
 			## Calculate graduated target speed, stall speed, throttle and pitch
-			mission_percentage=((alt-min_alt)/(max_alt-min_alt))*100
+			mission_percentage=((alt-min_release_alt)/(max_release_alt-min_release_alt))*100
 			target_speed=int((maximum_calculated_target_speed-minimum_calculated_target_speed)*(mission_percentage/100))+minimum_calculated_target_speed
 			max_speed=target_speed+10
 			min_speed=int((maximum_calculated_min_speed-minimum_calculated_min_speed)*(mission_percentage/100))+minimum_calculated_min_speed
 			min_pitch=int((maximum_calculated_min_pitch-minimum_calculated_min_pitch)*(mission_percentage/100))+minimum_calculated_min_pitch
 			throttle=maximum_calculated_throttle-int((maximum_calculated_throttle-minimum_calculated_throttle)*(mission_percentage/100))
 			max_pitch=maximum_calculated_max_pitch-int((maximum_calculated_max_pitch-minimum_calculated_max_pitch)*(mission_percentage/100))
-			print ("Alt "+str(alt)+"m, "+str(int(mission_percentage))+"%, max_pitch "+str(max_pitch)+"m/s, min_pitch "+str(min_pitch))
-			print ("Alt "+str(alt)+"m, "+str(int(mission_percentage))+"%, max_speed "+str(max_speed)+"m/s, target "+str(target_speed)+"m/s, min_speed "+str(min_speed)+"m/s")
-			print ("Alt "+str(alt)+"m, "+str(int(mission_percentage))+"%, throttle "+str(throttle)+"%")
-			print ("----")
+			## TODO Use logger class ????
+			self.log ("Alt "+str(alt)+"m, "+str(int(mission_percentage))+"%, max_pitch "+str(max_pitch)+"m/s, min_pitch "+str(min_pitch))
+			self.log ("Alt "+str(alt)+"m, "+str(int(mission_percentage))+"%, max_speed "+str(max_speed)+"m/s, target "+str(target_speed)+"m/s, min_speed "+str(min_speed)+"m/s")
+			self.log ("Alt "+str(alt)+"m, "+str(int(mission_percentage))+"%, throttle "+str(throttle)+"%")
+			self.log ("----")
 
 			self.vehicle.parameters['LIM_PITCH_MAX']=max_pitch
 			self.vehicle.parameters['LIM_PITCH_MIN']=0-min_pitch
@@ -84,6 +86,7 @@ class Flight(object):
 			self.vehicle.parameters['ARSPD_FBW_MIN']=min_speed
 			self.vehicle.parameters['TRIM_ARSPD_CM']=target_speed*100
 			goto_altitude(self.alt - self.altitude_step)
+			## Allow the flight controller to do it's thing for 60 seconds
 			time.sleep(60)
 			alt=self.vehicle.location.global_relative_frame.alt
 	
@@ -101,8 +104,11 @@ class Flight(object):
 		
 		self.change_mode("RTL")
 
+		## Keep the script alive until landing
 		while alt > 0:
 			time.sleep(300)
+
+		self.log ("Landed")
 
 	def change_mode(self, mode_name):
 		mode = VehicleMode(mode_name)
@@ -117,9 +123,9 @@ class Flight(object):
 			cmds.download()
 			cmds.wait_ready()
 			if not vehicle.home_location:
-				print " Waiting for home location ..."
+				self.log " Waiting for home location ..."
 				time.sleep(1)
-		print "Old home location: %s" % vehicle.home_location
+		self.log("Old home location: %s" % vehicle.home_location)
 
 		vehicle.home_location=LocationGlobal(self.home.latitude, self.home.longitude, self.home.altitude)
 
@@ -142,5 +148,8 @@ class Flight(object):
 		change_mode("FBWA")
 		self.vehicle.armed=True
 	    while not vehicle.armed:
-	        print(" Waiting for arming...")
+	        self.log(" Waiting for arming...")
 	        time.sleep(1)
+
+	def log(self, message)
+		print ( message )
