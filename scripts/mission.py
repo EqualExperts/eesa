@@ -30,7 +30,7 @@ class Drone(object):
         self.released = False
         self.flight_mission_started = False
 
-	self.home_alt = -1
+	self.home_alt = 262
 
         logging.basicConfig(format='%(asctime)-15s %(clientip)s %(user)-8s %(message)s')
         self.logger = logging.getLogger('mission_log')
@@ -78,7 +78,7 @@ class Drone(object):
                 self.log("Waiting for FBWA...")
                 time.sleep(1)
 
-            self.connection.armed   = True
+            self.connection.armed = True
 
             # Confirm vehicle armed before attempting to take off
             #while not self.connection.armed:
@@ -99,15 +99,15 @@ class Drone(object):
                 self.log("Waiting for GUIDED...")
                 time.sleep(1)
 
-            set_home()
+            self.set_home()
 
             self.connection.mode = VehicleMode("RTL")
 
             # TODO Load mission(s)
             # Land
 
-    def set_home():
-        msg = self.message_factory.command_long_encode(
+    def set_home(self):
+        msg = self.connection.message_factory.command_long_encode(
             0, 0,
             mavutil.mavlink.MAV_CMD_DO_SET_HOME,
             0,
@@ -115,10 +115,11 @@ class Drone(object):
             0, 0, 0,
             55.806312,
             -3.247739,
-            260
+            262
+            # self.home_alt ???
         )
-        self.send_mavlink(msg)
-        self.flush()
+        self.connection.send_mavlink(msg)
+        self.connection.flush()
 
     # Twitches servo 9 (aux 1) a random amount to keep it warm on the way up
     def twitch_release_servo(self):
@@ -130,13 +131,14 @@ class Drone(object):
 
     # Moves servo 9 (aux 1) to closed to hold payload
     def move_test_servos(self):
-        self.log("moving test servos")
-        for servo_number in self.test_servo_numbers:
-            start_new_thread(self.set_servo, (servo_number, self.current_test_servo_pwm,))
-        if self.current_test_servo_pwm != self.closed_pwm:
-            self.current_test_servo_pwm = self.closed_pwm
-        else:
-            self.current_test_servo_pwm = self.open_pwm
+        if not self.released:
+            self.log("moving test servos")
+            for servo_number in self.test_servo_numbers:
+                start_new_thread(self.set_servo, (servo_number, self.current_test_servo_pwm,))
+            if self.current_test_servo_pwm != self.closed_pwm:
+                self.current_test_servo_pwm = self.closed_pwm
+            else:
+                self.current_test_servo_pwm = self.open_pwm
 
     def connect(self):
         self.connection = drone_connect(self.connection_string, wait_ready=True)
@@ -169,7 +171,7 @@ class Drone(object):
         # Make sure the payload release is in the closed position
         self.lock_payload()
 
-	while self.connection.armed and not self.stop():
+	while not self.connection.armed and not self.stop():
 	    self.log( "Waiting for aircraft to be armed...." )
             time.sleep(5)
 
@@ -227,9 +229,6 @@ def start_flight(connection_string):
     @connection.on_attribute('location.global_frame')
     def listener_position(vehicle, name, message):
         alt = message.alt
-	if drone.home_alt == -1:
-	    drone.home_alt = alt
-	    drone.log("Set home alt to %s" % drone.home_alt)
 	rel_alt = alt - drone.home_alt
 	ts = int(time.time()*10)
 	if ts % 10 == 0:

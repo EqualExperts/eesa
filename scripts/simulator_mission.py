@@ -4,7 +4,7 @@ import mission
 args = ['--model', 'plane',]
 
 sitl = SITL() # load a binary path (optional)
-sitl.download("plane", "3.3.0", verbose=False)
+sitl.download("plane", "3.8.0", verbose=False)
 sitl.launch(args, verbose=False, await_ready=True, restart=False)
 sitl.block_until_ready(verbose=False)
 
