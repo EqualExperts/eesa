@@ -6,6 +6,7 @@ from thread import start_new_thread
 import time
 import math
 import random
+from flight import Flight
 
 import logging
 from logging.handlers import RotatingFileHandler
@@ -69,42 +70,8 @@ class Drone(object):
 
     # Main mission - should be executed after release
     def start_flight_mission(self):
-        if not self.flight_mission_started:
-            self.flight_mission_started = True
-            self.log("Starting flight mission")
-
-            self.connection.mode    = VehicleMode("FBWA")
-            while self.connection.mode.name != "FBWA":
-                self.log("Waiting for FBWA...")
-                time.sleep(1)
-
-            self.connection.armed = True
-
-            # Confirm vehicle armed before attempting to take off
-            #while not self.connection.armed:
-            #    self.log(" Waiting for arming...")
-            #    time.sleep(1)
-
-            takeoff = VehicleMode("AUTO")
-            while self.connection.mode.name != "AUTO":
-                self.log("Waiting for AUTO...")
-                self.connection.mode = takeoff
-                time.sleep(1)
-
-            time.sleep(5)
-
-            #GUIDED after take-off
-            self.connection.mode = VehicleMode("GUIDED")
-            while self.connection.mode.name != "GUIDED":
-                self.log("Waiting for GUIDED...")
-                time.sleep(1)
-
-            self.set_home()
-
-            self.connection.mode = VehicleMode("RTL")
-
-            # TODO Load mission(s)
-            # Land
+	flight = Flight(self.connection)
+	flight.takeoff()
 
     def set_home(self):
         msg = self.connection.message_factory.command_long_encode(
