@@ -23,11 +23,15 @@ class Flight(object):
 	minimum_calculated_max_pitch=500
 	maximum_calculated_max_pitch=3000
 
-	altitude_step=250
+	altitude_step=0.9
 	
 	def __init__(self, vehicle, home):
 		self.vehicle = vehicle
 		self.home = home
+		self.vehicle.parameters['FS_SHORT_ACTN']=3
+		self.vehicle.parameters['FS_LONG_ACTN']=0
+		self.vehicle.parameters['ARMING_CHECK']=2048
+
 		self.vehicle.parameters['TKOFF_THR_MINACC']=2
 		self.vehicle.parameters['LIM_PITCH_MAX']=700 #(i.e. can't climb)
 		self.vehicle.parameters['LIM_PITCH_MIN']=-9000 #(straight down)
@@ -69,7 +73,7 @@ class Flight(object):
 			min_pitch=int((self.maximum_calculated_min_pitch-self.minimum_calculated_min_pitch)*(mission_percentage/100))+self.minimum_calculated_min_pitch
 			throttle=self.maximum_calculated_throttle-int((self.maximum_calculated_throttle-self.minimum_calculated_throttle)*(mission_percentage/100))
 			max_pitch=self.maximum_calculated_max_pitch-int((self.maximum_calculated_max_pitch-self.minimum_calculated_max_pitch)*(mission_percentage/100))
-			## TODO Use logger class ????
+
 			self.log ("Alt "+str(self.alt)+"m, "+str(int(mission_percentage))+"%, max_pitch "+str(max_pitch)+", min_pitch "+str(min_pitch))
 			self.log ("Alt "+str(self.alt)+"m, "+str(int(mission_percentage))+"%, max_speed "+str(max_speed)+"m/s, target "+str(target_speed)+"m/s, min_speed "+str(min_speed)+"m/s")
 			self.log ("Alt "+str(self.alt)+"m, "+str(int(mission_percentage))+"%, throttle "+str(throttle)+"%")
@@ -83,9 +87,14 @@ class Flight(object):
 			self.vehicle.parameters['ARSPD_FBW_MIN']=min_speed
 			self.vehicle.parameters['TRIM_ARSPD_CM']=target_speed*100
 			self.vehicle.flush()
-			self.goto_altitude(self.alt - self.altitude_step)
+			
+			target_alt = self.alt * self.altitude_step
+			self.goto_altitude(target_alt)
 			## Allow the flight controller to do it's thing for 60 seconds
-			time.sleep(60)
+			count=0
+			while count < 60 and self.alt > target_alt:
+				count+=1
+				time.sleep(1)
 
 		## Last approach to primary landing site
 		self.vehicle.parameters['ARSPD_USE']=1
@@ -126,7 +135,7 @@ class Flight(object):
 		# Repeat first command because of bug in SITL
 		cmds.add(Command( 0, 0, 0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 45, 0, 0, 0, 0, 0, 100))
 		cmds.add(Command( 0, 0, 0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 45, 0, 0, 0, 0, 0, 100))
-		cmds.add(Command( 0, 0, 0, mavutil.mavlink.MAV_FRAME_GLOBAL, mavutil.mavlink.MAV_CMD_NAV_LOITER_UNLIM, 0, 0, 100, 0, 0, 0, lat, lng, take_off_alt))
+		# cmds.add(Command( 0, 0, 0, mavutil.mavlink.MAV_FRAME_GLOBAL, mavutil.mavlink.MAV_CMD_NAV_LOITER_UNLIM, 0, 0, 100, 0, 0, 0, lat, lng, take_off_alt))
 		self.vehicle.flush()
 
 	def goto_altitude(self, target_altitude):
