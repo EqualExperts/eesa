@@ -153,6 +153,9 @@ def start_flight(connection_string):
 	connection = drone.connect()
 	nowish = 1501926112 # Aug 5th 2017
 
+	# Default mode before target is RTL, just incase of an early release
+	connection.mode = VehicleMode("RTL")
+
 	@connection.on_message('SYSTEM_TIME')
 	def listenerTime(vehicle, name, message):
 		if connection.gps_0.fix_type == 3:
