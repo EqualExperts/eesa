@@ -25,14 +25,16 @@ class Flight(object):
 
 	altitude_step=0.9
 	
-	def __init__(self, vehicle, home):
+	def __init__(self, logger, vehicle, home):
 		self.vehicle = vehicle
 		self.home = home
+		self.logger = logger
+		self.alt=self.vehicle.location.global_relative_frame.alt
 		self.vehicle.parameters['FS_SHORT_ACTN']=3
 		self.vehicle.parameters['FS_LONG_ACTN']=0
 		self.vehicle.parameters['ARMING_CHECK']=2048
+		self.vehicle.parameters['TKOFF_THR_MINACC']=0
 
-		self.vehicle.parameters['TKOFF_THR_MINACC']=2
 		self.vehicle.parameters['LIM_PITCH_MAX']=700 #(i.e. can't climb)
 		self.vehicle.parameters['LIM_PITCH_MIN']=-9000 #(straight down)
 		self.vehicle.parameters['TRIM_THROTTLE']=5
@@ -43,9 +45,6 @@ class Flight(object):
 		self.vehicle.parameters['TRIM_ARSPD_CM']=9500
 		self.vehicle.parameters['ARSPD_USE']=0
 
-	def alt(self,alt):
-		self.alt = alt
-	
 	def takeoff(self):
 
 		self.set_home()
@@ -135,7 +134,6 @@ class Flight(object):
 		# Repeat first command because of bug in SITL
 		cmds.add(Command( 0, 0, 0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 45, 0, 0, 0, 0, 0, 100))
 		cmds.add(Command( 0, 0, 0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 45, 0, 0, 0, 0, 0, 100))
-		# cmds.add(Command( 0, 0, 0, mavutil.mavlink.MAV_FRAME_GLOBAL, mavutil.mavlink.MAV_CMD_NAV_LOITER_UNLIM, 0, 0, 100, 0, 0, 0, lat, lng, take_off_alt))
 		self.vehicle.flush()
 
 	def goto_altitude(self, target_altitude):
@@ -143,11 +141,6 @@ class Flight(object):
 		self.change_mode("GUIDED")
 		point = LocationGlobal(self.home['lat'], self.home['lng'], target_altitude)
 		self.vehicle.simple_goto(point)
-		## self.change_mode("GUIDED")
-		## cmds = self.vehicle.commands
-		## cmds.clear()
-		## cmds.add(Command( 0, 0, 0, mavutil.mavlink.MAV_FRAME_GLOBAL, mavutil.mavlink.MAV_CMD_NAV_LOITER_UNLIM, 0, 0, 100, 0, 0, 0, self.home['lat'], self.home['lng'], self.home['alt']))
-		## self.vehicle.flush()
 
 	def arm(self, mode):
 		self.change_mode(mode)
@@ -178,4 +171,4 @@ class Flight(object):
 		self.log("NEW home location: %s" % self.vehicle.home_location)
 
 	def log(self, message):
-		print ( message )
+		self.logger.info ( message )

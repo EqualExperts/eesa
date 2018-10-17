@@ -21,9 +21,9 @@ class Drone(object):
 	# Iceland
 	#home = { 'lat': 123.456, 'lng': 567.890, 'alt': 90 }
 	# Devils Beef Tub
-	home = { 'lat': 55.404, 'lng': -3.486, 'alt': 440 }
+	# home = { 'lat': 55.404, 'lng': -3.486, 'alt': 440 }
 	# Penicuik
-	#home = { 'lat': 55.807, 'lng': -3.248, 'alt': 302 }
+	home = { 'lat': 55.807, 'lng': -3.248, 'alt': 302 }
 
 	def __init__(self, connection_string, release_altitude=50):
 		self.connection_string = connection_string
@@ -40,9 +40,12 @@ class Drone(object):
 
 		self.flight = None
 
-		logging.basicConfig(format='%(asctime)-15s %(clientip)s %(user)-8s %(message)s')
+		logging.basicConfig(format='%(asctime)s %(message)s')
 		self.logger = logging.getLogger('mission_log')
-		self.logger.addHandler(RotatingFileHandler('mission.log', maxBytes=10000000, backupCount=0))
+		rotatingLog=RotatingFileHandler('eesa.log', maxBytes=1000000, backupCount=100)
+		rotatingLog.setLevel(logging.DEBUG)
+		self.logger.setLevel(logging.DEBUG)
+		self.logger.addHandler(rotatingLog)
 
 	def set_servo(self, servo_number, pwm_value):
 		pwm_value_int = int(pwm_value)
@@ -57,9 +60,7 @@ class Drone(object):
 		self.connection.send_mavlink(msg)
 
 	def log(self, message):
-		logmessage = "%s %s" % (time.strftime("%Y %m %d %H:%M:%S", time.gmtime()), message )
-		self.logger.info(logmessage)
-		print(logmessage)
+		self.logger.info(message)
 
 	# Moves servo 9 (aux 1) to release payload
 	def release_payload(self):
@@ -79,7 +80,7 @@ class Drone(object):
 
 	# Main mission - should be executed after release
 	def start_flight_mission(self):
-		self.flight = Flight(self.connection, self.home)
+		self.flight = Flight(self.logger, self.connection, self.home)
 		self.flight.takeoff()
 
 	# Twitches servo 9 (aux 1) a random amount to keep it warm on the way up
@@ -132,15 +133,7 @@ class Drone(object):
 		# Make sure the payload release is in the closed position
 		self.lock_payload()
 
-		while not self.connection.armed and not self.stop():
-			self.log( "Waiting for aircraft to be armed...." )
-			time.sleep(5)
-
 		while not self.stop():
-			if self.release_now():
-				self.release_payload()
-				time.sleep(10)
-				break;
 			self.move_test_servos()
 			time.sleep(3)
 
@@ -188,6 +181,9 @@ def start_flight(connection_string):
 			drone.release_payload()
 		else:
 			drone.twitch_release_servo()
+		if drone.release_now() and not drone.released:
+			drone.log ( "Forced Releasing payload at %s metres relative to home" % rel_alt)
+			drone.release_payload()
 
 	drone.report()
 	drone.autopilot()
