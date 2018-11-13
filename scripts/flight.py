@@ -165,7 +165,7 @@ class Flight(object):
 			cmds.wait_ready()
 			if not self.vehicle.home_location:
 				self.log("Waiting for home location ...")
-				tims.sleep(1)
+				time.sleep(1)
 		self.log("Old home location: %s" % self.vehicle.home_location)
 		self.vehicle.home_location=LocationGlobal(self.home['lat'], self.home['lng'],self.home['alt'])
 		while not self.vehicle.home_location:
