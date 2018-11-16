@@ -5,6 +5,8 @@ import os.path
 sys.path.append("/home/apsync/dronekit-python/")
 from dronekit import VehicleMode, Command, LocationGlobalRelative, LocationGlobal
 from pymavlink import mavutil
+import logging
+from logging.handlers import RotatingFileHandler
 
 class Flight(object):
 
@@ -25,10 +27,9 @@ class Flight(object):
 
 	altitude_step=0.9
 	
-	def __init__(self, logger, vehicle, home):
+	def __init__(self, vehicle, home):
 		self.vehicle = vehicle
 		self.home = home
-		self.logger = logger
 		self.alt=self.vehicle.location.global_relative_frame.alt
 		self.vehicle.parameters['FS_SHORT_ACTN']=3
 		self.vehicle.parameters['FS_LONG_ACTN']=0
@@ -45,6 +46,14 @@ class Flight(object):
 		self.vehicle.parameters['TRIM_ARSPD_CM']=9500
 		self.vehicle.parameters['ARSPD_USE']=0
 
+		logging.basicConfig(format='%(asctime)s,%(message)s')
+		self.logger = logging.getLogger('mission_log')
+		rotatingLog=RotatingFileHandler('flight.log', maxBytes=1000000, backupCount=100)
+		rotatingLog.setLevel(logging.DEBUG)
+		self.logger.setLevel(logging.DEBUG)
+		self.logger.addHandler(rotatingLog)
+
+
 	def takeoff(self):
 
 		self.set_home()
@@ -56,7 +65,7 @@ class Flight(object):
 		self.arm("FBWA")
 		self.change_mode("AUTO")
 	
-		self.log("Delaying to allow takeoff to happen")
+		self.logInfo("Delaying to allow takeoff to happen")
 		time.sleep(5)
 
 		while self.alt > self.min_release_alt:
@@ -110,9 +119,9 @@ class Flight(object):
 		self.goto_altitude(self.home['alt'])
 
 		## Keep the script alive until landing
-		self.log( "alt = "+str(self.alt))
+		self.logInfo( "alt = "+str(self.alt))
 		while True:
-			self.log( "Waiting to land, alt = "+str(self.alt))
+			self.logInfo( "Waiting to land, alt = "+str(self.alt))
 			time.sleep(300)
 
 		self.log ("Landed")
@@ -120,7 +129,7 @@ class Flight(object):
 	def change_mode(self, mode_name):
 		mode = VehicleMode(mode_name)
 		while self.vehicle.mode.name != mode_name:
-			self.log("Waiting for "+mode_name+"...")
+			self.logInfo("Waiting for "+mode_name+"...")
 			self.vehicle.mode = mode
 			time.sleep(1)
 	
@@ -130,14 +139,14 @@ class Flight(object):
 		take_off_alt=self.alt*1.1
 		cmds = self.vehicle.commands
 		cmds.clear()
-		self.log( "Loading mission with takeoff from %s to %s meters" % (self.alt,take_off_alt) )
+		self.logInfo( "Loading mission with takeoff from %s to %s meters" % (self.alt,take_off_alt) )
 		# Repeat first command because of bug in SITL
 		cmds.add(Command( 0, 0, 0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 45, 0, 0, 0, 0, 0, 100))
 		cmds.add(Command( 0, 0, 0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 45, 0, 0, 0, 0, 0, 100))
 		self.vehicle.flush()
 
 	def goto_altitude(self, target_altitude):
-		self.log( "Heading to target altitude %s meters" % (target_altitude) )
+		self.logInfo( "Heading to target altitude %s meters" % (target_altitude) )
 		self.change_mode("GUIDED")
 		point = LocationGlobal(self.home['lat'], self.home['lng'], target_altitude)
 		self.vehicle.simple_goto(point)
@@ -147,7 +156,7 @@ class Flight(object):
 		self.vehicle.armed=True
 		self.vehicle.flush
 		while not self.vehicle.armed:
-			self.log(" Waiting for arming...")
+			self.logInfo(" Waiting for arming...")
 			time.sleep(1)
 			self.vehicle.armed=True
 
@@ -157,18 +166,25 @@ class Flight(object):
 			cmds.download()
 			cmds.wait_ready()
 			if not self.vehicle.home_location:
-				self.log("Waiting for home location ...")
+				self.logInfo("Waiting for home location ...")
 				tims.sleep(1)
-		self.log("Old home location: %s" % self.vehicle.home_location)
+		self.logInfo("Old home location: %s" % self.vehicle.home_location)
 		self.vehicle.home_location=LocationGlobal(self.home['lat'], self.home['lng'],self.home['alt'])
 		while not self.vehicle.home_location:
 			cmds = self.vehicle.commands
 			cmds.download()
 			cmds.wait_ready()
 			if not self.vehicle.home_location:
-				self.log("Waiting for home location ...")
+				self.logInfo("Waiting for home location ...")
 				tims.sleep(1)
-		self.log("NEW home location: %s" % self.vehicle.home_location)
+		self.logInfo("NEW home location: %s" % self.vehicle.home_location)
 
-	def log(self, message):
-		self.logger.info ( message )
+	def logInfo(self, message):
+		self.logger.info(logMessage(message))
+
+	def logDebug(self, message):
+		self.logger.debug(logMessage(message))
+
+	def logMessage(self, message)
+		frame=self.vehicle.location.global_relative_frame
+		return "%d,%f,%f,'%s'" % (self.alt, self.lat, self.lng, message)
