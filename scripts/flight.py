@@ -30,7 +30,11 @@ class Flight(object):
 	def __init__(self, vehicle, home):
 		self.vehicle = vehicle
 		self.home = home
-		self.alt=self.vehicle.location.global_relative_frame.alt
+		frame=self.vehicle.location.global_frame
+		self.alt=frame.alt
+		self.lat=frame.lat
+		self.lng=frame.lon
+		
 		self.vehicle.parameters['FS_SHORT_ACTN']=3
 		self.vehicle.parameters['FS_LONG_ACTN']=0
 		self.vehicle.parameters['ARMING_CHECK']=2048
@@ -49,8 +53,8 @@ class Flight(object):
 		logging.basicConfig(format='%(asctime)s,%(message)s')
 		self.logger = logging.getLogger('mission_log')
 		rotatingLog=RotatingFileHandler('flight.log', maxBytes=1000000, backupCount=100)
-		rotatingLog.setLevel(logging.DEBUG)
-		self.logger.setLevel(logging.DEBUG)
+		rotatingLog.setLevel(logging.INFO)
+		self.logger.setLevel(logging.INFO)
 		self.logger.addHandler(rotatingLog)
 
 
@@ -58,6 +62,7 @@ class Flight(object):
 
 		self.set_home()
 
+		self.change_mode("MANUAL")
 		if self.alt > self.min_release_alt:
 			time.sleep(5) # wait for a little speed to build up
 		self.load_mission()
@@ -82,10 +87,10 @@ class Flight(object):
 			throttle=self.maximum_calculated_throttle-int((self.maximum_calculated_throttle-self.minimum_calculated_throttle)*(mission_percentage/100))
 			max_pitch=self.maximum_calculated_max_pitch-int((self.maximum_calculated_max_pitch-self.minimum_calculated_max_pitch)*(mission_percentage/100))
 
-			self.log ("Alt "+str(self.alt)+"m, "+str(int(mission_percentage))+"%, max_pitch "+str(max_pitch)+", min_pitch "+str(min_pitch))
-			self.log ("Alt "+str(self.alt)+"m, "+str(int(mission_percentage))+"%, max_speed "+str(max_speed)+"m/s, target "+str(target_speed)+"m/s, min_speed "+str(min_speed)+"m/s")
-			self.log ("Alt "+str(self.alt)+"m, "+str(int(mission_percentage))+"%, throttle "+str(throttle)+"%")
-			self.log ("----")
+			self.logInfo("Alt "+str(self.alt)+"m, "+str(int(mission_percentage))+"%, max_pitch "+str(max_pitch)+", min_pitch "+str(min_pitch))
+			self.logInfo("Alt "+str(self.alt)+"m, "+str(int(mission_percentage))+"%, max_speed "+str(max_speed)+"m/s, target "+str(target_speed)+"m/s, min_speed "+str(min_speed)+"m/s")
+			self.logInfo("Alt "+str(self.alt)+"m, "+str(int(mission_percentage))+"%, throttle "+str(throttle)+"%")
+			self.logInfo("----")
 
 			self.vehicle.parameters['LIM_PITCH_MAX']=max_pitch
 			self.vehicle.parameters['LIM_PITCH_MIN']=0-min_pitch
@@ -124,7 +129,7 @@ class Flight(object):
 			self.logInfo( "Waiting to land, alt = "+str(self.alt))
 			time.sleep(300)
 
-		self.log ("Landed")
+		self.logInfo("Landed")
 
 	def change_mode(self, mode_name):
 		mode = VehicleMode(mode_name)
@@ -180,11 +185,14 @@ class Flight(object):
 		self.logInfo("NEW home location: %s" % self.vehicle.home_location)
 
 	def logInfo(self, message):
-		self.logger.info(logMessage(message))
+		self.logger.info(self.logMessage(message))
 
 	def logDebug(self, message):
-		self.logger.debug(logMessage(message))
+		self.logger.debug(self.logMessage(message))
 
-	def logMessage(self, message)
-		frame=self.vehicle.location.global_relative_frame
-		return "%d,%f,%f,'%s'" % (self.alt, self.lat, self.lng, message)
+	def logMessage(self, message):
+                if self.vehicle:
+			return "%d,%f,%f,'%s'" % (self.alt, self.lat, self.lng, message)
+                else:
+                        return "-,-,-,'%s'" % message
+

@@ -41,12 +41,13 @@ class Drone(object):
 		self.flight_mission_started = False
 
 		self.flight = None
+		self.connection = None
 
 		logging.basicConfig(format='%(asctime)s,%(message)s')
 		self.logger = logging.getLogger('mission_log')
 		rotatingLog=RotatingFileHandler('mission.log', maxBytes=1000000, backupCount=100)
-		rotatingLog.setLevel(logging.DEBUG)
-		self.logger.setLevel(logging.DEBUG)
+		rotatingLog.setLevel(logging.INFO)
+		self.logger.setLevel(logging.INFO)
 		self.logger.addHandler(rotatingLog)
 
 	def set_servo(self, servo_number, pwm_value):
@@ -62,14 +63,17 @@ class Drone(object):
 		self.connection.send_mavlink(msg)
 
 	def logInfo(self, message):
-		self.logger.info(logMessage(message))
+		self.logger.info(self.logMessage(message))
 
 	def logDebug(self, message):
-		self.logger.debug(logMessage(message))
+		self.logger.debug(self.logMessage(message))
 
-	def logMessage(self, message)
-		frame=self.vehicle.location.global_relative_frame
-		return "%d,%f,%f,'%s'" % (frame.alt, frame.lat, frame.lng, message)
+	def logMessage(self, message):
+		if self.connection:
+			frame=self.connection.location.global_frame
+			return "%d,%f,%f,'%s'" % (frame.alt, frame.lat, frame.lon, message)
+		else:
+			return "-,-,-,'%s'" % message
 
 	# Moves servo 9 (aux 1) to release payload
 	def release_payload(self):
@@ -103,7 +107,7 @@ class Drone(object):
 	# Moves servo 9 (aux 1) to closed to hold payload
 	def move_test_servos(self):
 		if not self.released:
-			self.logInfo("moving test servos")
+			self.logDebug("moving test servos")
 			for servo_number in self.test_servo_numbers:
 				start_new_thread(self.set_servo, (servo_number, self.current_test_servo_pwm,))
 			if self.current_test_servo_pwm != self.closed_pwm:
@@ -124,10 +128,12 @@ class Drone(object):
 		self.logInfo(" Mode: %s" % self.connection.mode.name)
 
 	def stop(self):
-		return os.path.isfile("/home/apsync/stopmission")
+		path = os.path.dirname(os.path.abspath(__file__) )
+		return os.path.isfile("%s/stopmission" % path)
 
 	def release_now(self):
-		return os.path.isfile("/home/apsync/releasenow")
+		path = os.path.dirname(os.path.abspath(__file__) )
+		return os.path.isfile("%s/releasenow" % path)
 
 	def autopilot(self):
 
@@ -188,12 +194,12 @@ def start_flight(connection_string):
 			drone.flight.lng = message.lon
 			drone.flight.lat = message.lat	
 		if alt >= drone.release_altitude and not drone.released:
-			drone.log ( "Releasing payload at %s metres relative to home" % rel_alt)
+			drone.logInfo( "Releasing payload at %s metres relative to home" % rel_alt)
 			drone.release_payload()
 		else:
 			drone.twitch_release_servo()
 		if drone.release_now() and not drone.released:
-			drone.log ( "Forced Releasing payload at %s metres relative to home" % rel_alt)
+			drone.logInfo( "Forced Releasing payload at %s metres relative to home" % rel_alt)
 			drone.release_payload()
 
 	drone.report()
