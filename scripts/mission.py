@@ -193,14 +193,14 @@ def start_flight(connection_string):
 			drone.flight.alt = alt
 			drone.flight.lng = message.lon
 			drone.flight.lat = message.lat	
-		if alt >= drone.release_altitude and not drone.released:
+		if not drone.released and alt >= drone.release_altitude:
 			drone.logInfo( "Releasing payload at %s metres relative to home" % rel_alt)
+			drone.release_payload()
+		elif not drone.released and drone.release_now():
+			drone.logInfo( "Forced Releasing payload at %s metres relative to home" % rel_alt)
 			drone.release_payload()
 		else:
 			drone.twitch_release_servo()
-		if drone.release_now() and not drone.released:
-			drone.logInfo( "Forced Releasing payload at %s metres relative to home" % rel_alt)
-			drone.release_payload()
 
 	drone.report()
 	drone.autopilot()
