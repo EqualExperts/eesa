@@ -45,7 +45,7 @@ class Flight(object):
 		self.vehicle.parameters['TRIM_THROTTLE']=5
 		self.vehicle.parameters['THR_MAX']=5
 		self.vehicle.parameters['STAB_PITCH_DOWN']=15
-		self.vehicle.parameters['ARSPD_FBW_MIN']=100 #(max for ardupilot)
+		self.vehicle.parameters['ARSPD_FBW_MAX']=100 #(max for ardupilot)
 		self.vehicle.parameters['ARSPD_FBW_MIN']=90
 		self.vehicle.parameters['TRIM_ARSPD_CM']=9500
 		self.vehicle.parameters['ARSPD_USE']=0
