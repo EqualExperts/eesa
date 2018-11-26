@@ -29,8 +29,12 @@ class Drone(object):
 
 	def __init__(self, connection_string):
 		self.connection_string = connection_string
-		self.closed_pwm = 1890
-		self.open_pwm = 1280
+		## skyhunter
+		# self.closed_pwm = 1890
+		# self.open_pwm = 1280
+		## x5
+		self.closed_pwm = 1800
+		self.open_pwm = 1250
 		self.twitch=10
 		self.release_servo_number = 9 # aux 1
 		self.test_servo_numbers = []
@@ -43,7 +47,7 @@ class Drone(object):
 		self.flight = None
 		self.connection = None
 
-		logging.basicConfig(format='%(asctime)s,%(message)s')
+		# logging.basicConfig(format='%(asctime)s,%(message)s')
 		self.logger = logging.getLogger('mission_log')
 		rotatingLog=RotatingFileHandler('mission.log', maxBytes=1000000, backupCount=100)
 		rotatingLog.setLevel(logging.INFO)
@@ -71,7 +75,8 @@ class Drone(object):
 	def logMessage(self, message):
 		if self.connection:
 			frame=self.connection.location.global_frame
-			return "%d,%f,%f,'%s'" % (frame.alt, frame.lat, frame.lon, message)
+			t = time.localtime()
+			return "%s,%d,%f,%f,'%s'" % (time.asctime(t),frame.alt, frame.lat, frame.lon, message)
 		else:
 			return "-,-,-,'%s'" % message
 
