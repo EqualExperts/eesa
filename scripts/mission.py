@@ -19,11 +19,11 @@ from dronekit import connect as drone_connect, mavutil, VehicleMode
 class Drone(object):
 
 	# Iceland
-	#home = { 'lat': 123.456, 'lng': 567.890, 'alt': 90, 'release_alt': 30000 }
+	home = { 'lat': 64.098, 'lng': -21.047, 'alt': 140, 'release_alt': 30000 }
 	# Devils Beef Tub
 	# home = { 'lat': 55.404, 'lng': -3.486, 'alt': 440, 'release_alt': 440 }
 	# Penicuik
-	home = { 'lat': 55.807, 'lng': -3.248, 'alt': 302, 'release_alt': 302 }
+	# home = { 'lat': 55.807, 'lng': -3.248, 'alt': 302, 'release_alt': 302 }
 	# Otley Road
 	# home = { 'lat': 53.880447, 'lng': -1.795451, 'alt': 312, 'release_alt': 312 }
 
