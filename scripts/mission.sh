@@ -1,11 +1,11 @@
 #!/bin/sh
-# sleep 3m
+sleep 1m
 cd /home/apsync
+gzip -c mission.log  > mission.log."$(date +%s)".gz;
+gzip -c flight.log  > flight.log."$(date +%s)".gz;
 until [ -f /home/apsync/stopmission ]
 do
-  rm releasenow stopmission
-  gzip -c mission.log  > mission.log."$(date +%s)".gz;
-  python mission.py 2>&1 > mission.log
+  rm -f releasenow stopmission
+  python mission.py 2>&1 >> /tmp/mission.log
   sleep 5
 done
-# TODO loop unless stopmission found incase wait timeout?
