@@ -14,5 +14,7 @@ ADD sim_eesa.py /root/ardupilot/Tools/autotest/sim_eesa.py
 RUN chmod a+x /root/ardupilot/Tools/autotest/sim_eesa.py
 RUN echo "cd ~/ardupilot/ArduPlane; rm -f mav.* eeprom.bin; ~/ardupilot/Tools/autotest/sim_eesa.py --out 127.0.0.1:9000 --console -L ICEL --daemon 2>&1" > /root/sim_eesa.sh
 RUN chmod a+x /root/sim_eesa.sh
-EXPOSE 9000
+EXPOSE 5503:5503/udp
+EXPOSE 5760:5760/udp
+EXPOSE 9000:9000/udp
 ENTRYPOINT /root/sim_eesa.sh
