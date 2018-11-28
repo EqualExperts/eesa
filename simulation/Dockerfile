@@ -6,7 +6,6 @@ RUN apt-get -y install python-pip
 RUN apt-get -y install git 
 RUN pip install dronekit
 RUN pip install MAVProxy
-RUN cd ~; git clone https://github.com/EqualExperts/eesa.git
 RUN cd ~; git clone https://github.com/ArduPilot/ardupilot.git; cd ardupilot; git submodule update --init --recursive
 RUN cd ~/ardupilot; Tools/scripts/install-prereqs-ubuntu.sh -y; . ~/.profile
 RUN echo "ICEL=64.073,-19.754,10000,180" >> ~/ardupilot/Tools/autotest/locations.txt
