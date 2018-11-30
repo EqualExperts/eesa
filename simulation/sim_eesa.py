@@ -628,7 +628,7 @@ def start_mavproxy(opts, stuff):
                 # mavlink out to the containing host OS
                 cmd.extend(["--out", "10.0.2.2:" + str(port)])
             else:
-                cmd.extend(["--out", "127.0.0.1:" + str(port)])
+                cmd.extend(["--out", "docker.for.mac.localhost:" + str(port)])
 
     if opts.tracker:
         cmd.extend(["--load-module", "tracker"])
@@ -1002,7 +1002,7 @@ if cmd_opts.frame is None:
 
 # setup ports for this instance
 mavlink_port = "tcp:127.0.0.1:" + str(5760 + 10 * cmd_opts.instance)
-simout_port = "127.0.0.1:" + str(5501 + 10 * cmd_opts.instance)
+simout_port = "docker.for.mac.localhost:" + str(5501 + 10 * cmd_opts.instance)
 
 frame_infos = vinfo.options_for_frame(cmd_opts.frame,
                                       cmd_opts.vehicle,
