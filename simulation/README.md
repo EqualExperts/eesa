@@ -2,11 +2,15 @@
 
 Since not everyone on the project has a Pixhawk 2.1 with Intel Edison, this simulation VM should make it easier for us to collaborate.
 
-#  Prerequisites
+# Prerequisites
 
 - OSX (Dockerfile will need tweaking for linux)
 - Python 2.7 installed
 - This repo cloned
+
+# Plane Architecture
+
+![Space Plane Architecture](https://github.com/EqualExperts/eesa/blob/master/simulation/Space%20Plane%20Architecture.png)
 
 # Running the drop test simulation
 Step 0: clone eesa
