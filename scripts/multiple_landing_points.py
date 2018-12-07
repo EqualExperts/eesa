@@ -3,6 +3,7 @@
 
 from dronekit import connect, VehicleMode, LocationGlobalRelative, LocationGlobal
 from pymavlink import mavutil
+from math import sin, cos, sqrt, atan2, radians
 import time
 import json
 # import dronekit_sitl
@@ -61,12 +62,35 @@ def calculate_nearest_safe_landing():
     chosen_site = None
 
     for site in landing_sites["sites"]:
-        site_distance = get_distance(site)
+        site_distance = get_distance(site["lat"], site["lon"])
         if site_distance < distance:
             distance = site_distance
             chosen_site = site
 
     return chosen_site
+
+def get_distance_to_home():
+    home = vehicle.home_location
+    return get_distance(home.lat, home.lon)
+
+def get_distance(latitude, longitude):
+    current = vehicle.location.global_relative_frame
+    R = 6373.0
+
+    lat1 = radians(current.lat)
+    lon1 = radians(current.lon)
+    lat2 = radians(latitude)
+    lon2 = radians(longitude)
+
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+
+    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+    distance = R * c
+    print( "Distance = %s" % distance)
+    return distance
 
 def inject_landing_mission(site):
     if site is not None:
@@ -82,6 +106,7 @@ def inject_landing_mission(site):
         cmds.add(cmd)
 
         cmds.upload()
+
 
 wait_for_rtl()
 site = calculate_nearest_safe_landing()
