@@ -1,5 +1,6 @@
 from __future__ import print_function
 import sys
+import signal
 import os
 import os.path
 from thread import start_new_thread
@@ -27,6 +28,9 @@ class Drone(object):
 
 	def __init__(self, connection_string):
 		self.connection_string = connection_string
+		signal.signal(signal.SIGINT, self.shutdown)
+		signal.signal(signal.SIGTERM, self.shutdown)
+		self.stopped = False
 		## skyhunter
 		# self.closed_pwm = 1890
 		# self.open_pwm = 1280
@@ -104,10 +108,6 @@ class Drone(object):
 		self.connection = drone_connect(self.connection_string, wait_ready=True)
 		return self.connection
 
-	def stop(self):
-		path = os.path.dirname(os.path.abspath(__file__) )
-		return os.path.isfile("%s/stopmission" % path)
-
 	def release_now(self):
 		path = os.path.dirname(os.path.abspath(__file__) )
 		return os.path.isfile("%s/releasenow" % path)
@@ -116,7 +116,7 @@ class Drone(object):
 
 		# TODO use GPS Fix = 3D before allowing continue?
 		# TODO check if safety switch activated?
-		while not self.connection.is_armable and not self.stop():
+		while not self.connection.is_armable and not self.stopped:
 			self.log.logInfo(self.connection, "Initialising...." )
 			time.sleep(5)
 
@@ -125,12 +125,21 @@ class Drone(object):
 		# Make sure the payload release is in the closed position
 		self.lock_payload()
 
-		while not self.stop():
+		while not self.stopped:
 			self.move_test_servos()
 			time.sleep(3)
 
-		logging.shutdown()
-		self.connection.close()
+		self.shutdown()
+
+	def shutdown(self, a, b):
+			self.stopped = True
+			self.log.report(self.connection)
+			self.log.logInfo(self.connection, "Mission script complete")
+			if self.connection != None:
+				self.connection.close()
+			self.log.shutdown()
+			print("Mission script complete")
+			sys.exit()
 
 def start_flight(connection_string):
 	drone = Drone(connection_string)

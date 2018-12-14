@@ -7,7 +7,7 @@ class FlightLog(object):
 
 	def __init__(self, filename):
 		self.logger = logging.getLogger(filename)
-		rotatingLog=RotatingFileHandler('flight.log', maxBytes=1000000, backupCount=100)
+		rotatingLog=RotatingFileHandler(filename, maxBytes=1000000, backupCount=100)
 		rotatingLog.setLevel(logging.INFO)
 		self.logger.setLevel(logging.INFO)
 		self.logger.addHandler(rotatingLog)
@@ -33,3 +33,6 @@ class FlightLog(object):
 		self.logInfo(vehicle, " Is Armable?: %s" % vehicle.is_armable)
 		self.logInfo(vehicle, " System status: %s" % vehicle.system_status.state)
 		self.logInfo(vehicle, " Mode: %s" % vehicle.mode.name)
+
+	def shutdown(self):
+		logging.shutdown()
