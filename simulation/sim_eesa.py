@@ -1046,6 +1046,7 @@ if cmd_opts.hil:
                            [os.path.join(find_autotest_dir(),
                                          "jsb_sim/runsim.py"),
                             "--home", location,
+                            "--fgout", "docker.for.mac.localhost:5503"
                             "--speedup=" + str(cmd_opts.speedup)])
 else:
     if not cmd_opts.no_rebuild:  # i.e. we should rebuild
