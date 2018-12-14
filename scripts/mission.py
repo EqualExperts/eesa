@@ -7,9 +7,7 @@ import time
 import math
 import random
 from flight import Flight
-
-import logging
-from logging.handlers import RotatingFileHandler
+from log import FlightLog
 
 # TODO Nicer way to import bleeding edge libraries?
 sys.path.append("/home/apsync/dronekit-python/")
@@ -47,12 +45,7 @@ class Drone(object):
 		self.flight = None
 		self.connection = None
 
-		# logging.basicConfig(format='%(asctime)s,%(message)s')
-		self.logger = logging.getLogger('mission_log')
-		rotatingLog=RotatingFileHandler('mission.log', maxBytes=1000000, backupCount=100)
-		rotatingLog.setLevel(logging.INFO)
-		self.logger.setLevel(logging.INFO)
-		self.logger.addHandler(rotatingLog)
+		self.log = FlightLog('mission.log')
 
 	def set_servo(self, servo_number, pwm_value):
 		pwm_value_int = int(pwm_value)
@@ -66,23 +59,10 @@ class Drone(object):
 		)
 		self.connection.send_mavlink(msg)
 
-	def logInfo(self, message):
-		self.logger.info(self.logMessage(message))
-
-	def logDebug(self, message):
-		self.logger.debug(self.logMessage(message))
-
-	def logMessage(self, message):
-		if self.connection:
-			frame=self.connection.location.global_frame
-			t = time.localtime()
-			return "%s,%d,%f,%f,'%s'" % (time.asctime(t),frame.alt, frame.lat, frame.lon, message)
-		else:
-			return "-,-,-,'%s'" % message
 
 	# Moves servo 9 (aux 1) to release payload
 	def release_payload(self):
-		self.logInfo("!!!!!RELEASING PAYLOAD!!!!!")
+		self.log.logInfo(self.connection, "!!!!!RELEASING PAYLOAD!!!!!")
 		start_new_thread(self.set_servo, (self.release_servo_number, self.open_pwm,))
 		self.released = True
 		if not self.flight_mission_started:
@@ -91,7 +71,7 @@ class Drone(object):
 
 	# Moves servo 9 (aux 1) to closed to hold payload
 	def lock_payload(self):
-		self.logInfo("!!!!!LOCKING PAYLOAD!!!!!")
+		self.log.logInfo(self.connection, "!!!!!LOCKING PAYLOAD!!!!!")
 		start_new_thread(self.set_servo, (self.release_servo_number, self.closed_pwm,))
 		self.released = False
 
@@ -112,7 +92,7 @@ class Drone(object):
 	# Moves servo 9 (aux 1) to closed to hold payload
 	def move_test_servos(self):
 		if not self.released:
-			self.logDebug("moving test servos")
+			self.log.logDebug(self.connection, "moving test servos")
 			for servo_number in self.test_servo_numbers:
 				start_new_thread(self.set_servo, (servo_number, self.current_test_servo_pwm,))
 			if self.current_test_servo_pwm != self.closed_pwm:
@@ -123,14 +103,6 @@ class Drone(object):
 	def connect(self):
 		self.connection = drone_connect(self.connection_string, wait_ready=True)
 		return self.connection
-
-	def report(self):
-		self.logInfo(" GPS: %s" % self.connection.gps_0)
-		self.logInfo(" Battery: %s" % self.connection.battery)
-		self.logInfo(" Last Heartbeat: %s" % self.connection.last_heartbeat)
-		self.logInfo(" Is Armable?: %s" % self.connection.is_armable)
-		self.logInfo(" System status: %s" % self.connection.system_status.state)
-		self.logInfo(" Mode: %s" % self.connection.mode.name)
 
 	def stop(self):
 		path = os.path.dirname(os.path.abspath(__file__) )
@@ -145,10 +117,10 @@ class Drone(object):
 		# TODO use GPS Fix = 3D before allowing continue?
 		# TODO check if safety switch activated?
 		while not self.connection.is_armable and not self.stop():
-			self.logInfo( "Initialising...." )
+			self.log.logInfo(self.connection, "Initialising...." )
 			time.sleep(5)
 
-		self.logInfo("Desired release altitude = %s" % self.release_altitude )
+		self.log.logInfo(self.connection, "Desired release altitude = %s" % self.release_altitude )
 
 		# Make sure the payload release is in the closed position
 		self.lock_payload()
@@ -162,7 +134,7 @@ class Drone(object):
 
 def start_flight(connection_string):
 	drone = Drone(connection_string)
-	drone.logInfo("Connecting to plane on %s" % (drone.connection_string,))
+	drone.log.logInfo(drone.connection, "Connecting to plane on %s" % (drone.connection_string,))
 	connection = drone.connect()
 	nowish = 1501926112 # Aug 5th 2017
 
@@ -178,14 +150,14 @@ def start_flight(connection_string):
 			if gpstime > nowish:
 				difftime = math.fabs(gpstime - systime)
 				if difftime > 60:
-					drone.logInfo( "gps time %s" % gpstime )
-					drone.logInfo( "sys time %s" % systime )
-					drone.logInfo( "diff %s" % difftime )
-					drone.logInfo("Setting system time to match GPS")
+					drone.log.logInfo(drone.connection, "gps time %s" % gpstime )
+					drone.log.logInfo(drone.connection, "sys time %s" % systime )
+					drone.log.logInfo(drone.connection, "diff %s" % difftime )
+					drone.log.logInfo(drone.connection, "Setting system time to match GPS")
 					if sys.platform in ['linux', 'linux2', 'darwin']:
 						os.system("sudo date +%s -s @%s" % ('%s', gpstime))
 			else:
-				drone.logInfo( "The GPS returned time since boot instead of time since epoch so can't use it for system time" )
+				drone.log.logInfo(drone, "The GPS returned time since boot instead of time since epoch so can't use it for system time" )
 
 	@connection.on_attribute('location.global_frame')
 	def listener_position(vehicle, name, message):
@@ -193,21 +165,21 @@ def start_flight(connection_string):
 		rel_alt = alt - drone.home['alt']
 		ts = int(time.time()*10)
 		if ts % 25 == 0:
-			drone.logInfo( "Rel Alt %s" % rel_alt )
+			drone.log.logInfo(drone.connection, "Rel Alt %s" % rel_alt )
 		if drone.flight:
 			drone.flight.alt = alt
 			drone.flight.lng = message.lon
 			drone.flight.lat = message.lat	
 		if not drone.released and alt >= drone.release_altitude:
-			drone.logInfo( "Releasing payload at %s metres relative to home" % rel_alt)
+			drone.log.logInfo(drone.connection, "Releasing payload at %s metres relative to home" % rel_alt)
 			drone.release_payload()
 		elif not drone.released and drone.release_now():
-			drone.logInfo( "Forced Releasing payload at %s metres relative to home" % rel_alt)
+			drone.log.logInfo(drone.connection, "Forced Releasing payload at %s metres relative to home" % rel_alt)
 			drone.release_payload()
 		else:
 			drone.twitch_release_servo()
 
-	drone.report()
+	drone.log.report(drone.connection)
 	drone.autopilot()
 
 if __name__ == '__main__':
