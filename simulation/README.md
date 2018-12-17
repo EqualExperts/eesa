@@ -43,8 +43,13 @@ python mission.py
 If you have problems installing the dronekit library, see http://python.dronekit.io/develop/installation.html
 
 ## TODO
+- output status to log when Waiting for arm...
+- Dockerfile - Stop ardupilot recompile on run
+- Dockerfile - UDP host defaults to Mac address but can be overridden for linux
+- Get local flightgear connecting to sitl on docker
+- Fix height/altitude in sitl - should not = home
+- Does initial altitude = altitude specified in locations.txt?
 - Magically increase GPS altitude to simulate a balloon lift
 - Overlay for Ardupilot to allow arm and drop from altitude
 - Improve SITL simulation of air pressure decrease with altitude
-- Create Docker image (without flightgear)
 
