@@ -12,6 +12,10 @@ Since not everyone on the project has a Pixhawk 2.1 with Intel Edison, this simu
 
 ![Space Plane Architecture](https://github.com/EqualExperts/eesa/blob/master/simulation/Space%20Plane%20Architecture.png)
 
+# Simulation Architecture
+
+![Simulation Architecture](https://github.com/EqualExperts/eesa/blob/master/simulation/SITL.png)
+
 # Running the drop test simulation
 Step 0: clone eesa
 ```
