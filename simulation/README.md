@@ -29,7 +29,8 @@ docker build -t="eesa/simulation" .
 docker run --name sim_eesa -d eesa/simulation
 docker logs -f sim_eesa
 ```
-Step 3: Start the FlightGear Sim (optional)
+Step 3 (Optional): Start the FlightGear Sim
+
 In a new termal, startup the FlightGear simulator with the plane model
 ```
 ./fg.sh
@@ -44,16 +45,16 @@ cd ~/eesa/scripts
 python mission.py
 ```
 
+Logs are output to mission.log and flight.log
+
 If you have problems installing the dronekit library, see http://python.dronekit.io/develop/installation.html
 
 ## TODO
+- Get local flightgear connecting to sitl on docker
 - output status to log when Waiting for arm...
 - Dockerfile - Stop ardupilot recompile on run
-- Dockerfile - UDP host defaults to Mac address but can be overridden for linux
-- Get local flightgear connecting to sitl on docker
-- Fix height/altitude in sitl - should not = home
-- Does initial altitude = altitude specified in locations.txt?
 - Magically increase GPS altitude to simulate a balloon lift
-- Overlay for Ardupilot to allow arm and drop from altitude
+- Fix height/altitude in sitl - should not = home
+- Overlay for Ardupilot to allow arm and drop from altitude, instead of patch file
 - Improve SITL simulation of air pressure decrease with altitude
 
