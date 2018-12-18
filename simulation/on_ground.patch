@@ -1,0 +1,14 @@
+diff --git a/libraries/SITL/SIM_Aircraft.cpp b/libraries/SITL/SIM_Aircraft.cpp
+index 8b2d8e97b..aec96e430 100644
+--- a/libraries/SITL/SIM_Aircraft.cpp
++++ b/libraries/SITL/SIM_Aircraft.cpp
+@@ -171,7 +171,8 @@ float Aircraft::hagl() const
+ */
+ bool Aircraft::on_ground() const
+ {
+-    return hagl() <= 0.001f;  // prevent bouncing around ground
++	return false;
++    // return hagl() <= 0.001f;  // prevent bouncing around ground
+ }
+ 
+ /*

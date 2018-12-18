@@ -49,7 +49,7 @@ class Flight(object):
 		self.vehicle.parameters['TRIM_ARSPD_CM']=9500
 		self.vehicle.parameters['ARSPD_USE']=0
 
-		self.log = FlightLog('mission_log')
+		self.log = FlightLog('flight.log')
 
 
 	def takeoff(self):
@@ -154,10 +154,11 @@ class Flight(object):
 		self.vehicle.armed=True
 		self.vehicle.flush
 		while not self.vehicle.armed:
-			self.log.logInfo(self.vehicle, " Waiting for arming...")
-			# self.log.logState(self.vehicle);
+			self.log.logInfo(self.vehicle, "Waiting for arming...")
+			self.log.report(self.vehicle);
 			time.sleep(1)
 			self.vehicle.armed=True
+		self.log.logInfo(self.vehicle, "ARMED")
 
 	def set_home(self):
 		while not self.vehicle.home_location:
