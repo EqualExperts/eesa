@@ -7,7 +7,6 @@ RUN apt-get -y install git
 RUN apt-get -y autoremove
 RUN apt-get -y clean
 RUN pip install MAVProxy
-ENV TINI_VERSION v0.18.0
 ENV LOCATION ICEL
 ENV UDP_HOST docker.for.mac.localhost
 ENV START_ALTITUDE 30000
