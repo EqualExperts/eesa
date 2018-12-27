@@ -1,0 +1,13 @@
+diff --git a/Tools/autotest/jsb_sim/runsim.py b/Tools/autotest/jsb_sim/runsim.py
+index 439dee334..37d6d2bb3 100755
+--- a/Tools/autotest/jsb_sim/runsim.py
++++ b/Tools/autotest/jsb_sim/runsim.py
+@@ -187,7 +187,7 @@ from optparse import OptionParser
+ parser = OptionParser("runsim.py [options]")
+ parser.add_option("--simin",   help="SITL input (IP:port)",          default="127.0.0.1:5502")
+ parser.add_option("--simout",  help="SITL output (IP:port)",         default="127.0.0.1:5501")
+-parser.add_option("--fgout",   help="FG display output (IP:port)",   default="127.0.0.1:5503")
++parser.add_option("--fgout",   help="FG display output (IP:port)",   default="docker.for.mac.localhost:5503")
+ parser.add_option("--home",    type='string', help="home lat,lng,alt,hdg (required)")
+ parser.add_option("--script",  type='string', help='jsbsim model script', default='jsb_sim/rascal_test.xml')
+ parser.add_option("--options", type='string', help='jsbsim startup options')

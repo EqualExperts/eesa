@@ -24,6 +24,10 @@ import shlex
 
 from pysim import vehicleinfo
 
+# List of open terminal windows for macosx
+windowID = []
+
+
 class CompatError(Exception):
     """A custom exception class to hold state if we encounter the parse
     error we are looking for"""
@@ -131,6 +135,60 @@ class CompatOptionParser(optparse.OptionParser):
         return opts, args
 
 
+def cygwin_pidof(proc_name):
+    """ Thanks to kata198 for this:
+    https://github.com/kata198/cygwin-ps-misc/blob/master/pidof
+    """
+    pipe = subprocess.Popen("ps -ea | grep " + proc_name,
+                            shell=True,
+                            stdout=subprocess.PIPE)
+    output_lines = pipe.stdout.read().replace("\r", "").split("\n")
+    ret = pipe.wait()
+    pids = []
+    if ret != 0:
+        # No results
+        return []
+    for line in output_lines:
+        if not line:
+            continue
+        line_split = [item for item in line.split(' ') if item]
+        cmd = line_split[-1].split('/')[-1]
+        if cmd == proc_name:
+            try:
+                pid = int(line_split[0].strip())
+            except:
+                pid = int(line_split[1].strip())
+            if pid not in pids:
+                pids.append(pid)
+    return pids
+
+
+def under_cygwin():
+    """Return if Cygwin binary exist"""
+    return os.path.exists("/usr/bin/cygstart")
+
+
+def under_macos():
+    return sys.platform == 'darwin'
+
+
+def kill_tasks_cygwin(victims):
+    """Shell out to ps -ea to find processes to kill"""
+    for victim in list(victims):
+        pids = cygwin_pidof(victim)
+#        progress("pids for (%s): %s" %
+#                 (victim,",".join([ str(p) for p in pids])))
+        for apid in pids:
+            os.kill(apid, signal.SIGKILL)
+
+
+def kill_tasks_macos():
+    for window in windowID:
+        cmd = ("osascript -e \'tell application \"Terminal\" to close "
+               "(window(get index of window id %s))\'" % window)
+        os.system(cmd)
+
+
 def kill_tasks_psutil(victims):
     """Use the psutil module to kill tasks by name.  Sadly, this module is
     not available on Windows, but when it is we should be able to *just*
@@ -180,40 +238,18 @@ def kill_tasks():
                 exe_name = os.path.basename(frame_info["waf_target"])
                 victim_names.add(exe_name)
 
+        if under_cygwin():
+            return kill_tasks_cygwin(victim_names)
+        if under_macos() and os.environ.get('DISPLAY'):
+            # use special macos kill routine if Display is on
+            return kill_tasks_macos()
+
         try:
             kill_tasks_psutil(victim_names)
         except ImportError:
             kill_tasks_pkill(victim_names)
     except Exception as e:
         progress("kill_tasks failed: {}".format(str(e)))
-
-
-def check_jsbsim_version():
-    """Assert that the JSBSim we will run is the one we expect to run"""
-    jsbsim_cmd = ["JSBSim", "--version"]
-    progress_cmd("Get JSBSim version", jsbsim_cmd)
-    try:
-        jsbsim = subprocess.Popen(jsbsim_cmd, stdout=subprocess.PIPE)
-        jsbsim_version = jsbsim.communicate()[0]
-    except OSError:
-        # this value will trigger the ".index" check below and produce
-        # a reasonable error message:
-        jsbsim_version = ''
-    try:
-        jsbsim_version.index(b"ArduPilot")
-    except ValueError:
-        print(r"""
-=========================================================
-You need the latest ArduPilot version of JSBSim installed
-and in your \$PATH
-
-Please get it from git://github.com/tridge/jsbsim.git
-See
-http://ardupilot.org/dev/docs/setting-up-sitl-on-linux.html
-for more details
-=========================================================
-""")
-        sys.exit(1)
 
 
 def progress(text):
@@ -412,7 +448,29 @@ def run_in_terminal_window(autotest, name, cmd):
     runme.extend(cmd)
     progress_cmd("Run " + name, runme)
 
-    p = subprocess.Popen(runme)
+    if under_macos() and os.environ.get('DISPLAY'):
+        # on MacOS record the window IDs so we can close them later
+        out = subprocess.Popen(runme, stdout=subprocess.PIPE).communicate()[0]
+        out = out.decode('utf-8')
+        import re
+        p = re.compile('tab 1 of window id (.*)')
+
+        tstart = time.time()
+        while time.time() - tstart < 5:
+            tabs = p.findall(out)
+
+            if len(tabs) > 0:
+                break
+
+            time.sleep(0.1)
+        # sleep for extra 2 seconds for application to start
+        time.sleep(2)
+        if len(tabs) > 0:
+            windowID.append(tabs[0])
+        else:
+            progress("Cannot find %s process terminal" % name)
+    else:
+        p = subprocess.Popen(runme)
 
 
 tracker_uarta = None  # blemish
@@ -453,9 +511,13 @@ def start_vehicle(binary, autotest, opts, stuff, loc):
     if opts.valgrind:
         cmd_name += " (valgrind)"
         cmd.append("valgrind")
+        # adding this option allows valgrind to cope with the overload
+        # of operator new
+        cmd.append("--soname-synonyms=somalloc=nouserintercepts")
     if opts.callgrind:
         cmd_name += " (callgrind)"
-        cmd.append("valgrind --tool=callgrind")
+        cmd.append("valgrind")
+        cmd.append("--tool=callgrind")
     if opts.gdb or opts.gdb_stopped:
         cmd_name += " (gdb)"
         cmd.append("gdb")
@@ -483,7 +545,6 @@ def start_vehicle(binary, autotest, opts, stuff, loc):
         cmd.append("-w")
     cmd.extend(["--model", stuff["model"]])
     cmd.extend(["--speedup", str(opts.speedup)])
-    ## cmd.extend(["--fgout", "docker.for.mac.localhost:5503"])
     if opts.sitl_instance_args:
         # this could be a lot better:
         cmd.extend(opts.sitl_instance_args.split(" "))
@@ -511,6 +572,8 @@ def start_vehicle(binary, autotest, opts, stuff, loc):
     if path is not None:
         cmd.extend(["--defaults", path])
 
+    cmd.extend(["--fg", "docker.for.mac.localhost"])
+
     run_in_terminal_window(autotest, cmd_name, cmd)
 
 
@@ -521,16 +584,29 @@ def start_mavproxy(opts, stuff):
 
     extra_cmd = ""
     cmd = []
-    cmd.append("mavproxy.py")
+    if under_cygwin():
+        cmd.append("/usr/bin/cygstart")
+        cmd.append("-w")
+        cmd.append("mavproxy.exe")
+    else:
+        cmd.append("mavproxy.py")
 
-    cmd.extend(["--master", mavlink_port])
-    if stuff["sitl-port"]:
-        cmd.extend(["--sitl", simout_port])
+    if opts.hil:
+        cmd.extend(["--load-module", "HIL"])
+    else:
+        cmd.extend(["--master", mavlink_port])
+        if stuff["sitl-port"]:
+            cmd.extend(["--sitl", simout_port])
 
     if not opts.no_extra_ports:
         ports = [p + 10 * cmd_opts.instance for p in [14550, 14551]]
         for port in ports:
-            cmd.extend(["--out", "127.0.0.1:" + str(port)])
+            if os.path.isfile("/ardupilot.vagrant"):
+                # We're running inside of a vagrant guest; forward our
+                # mavlink out to the containing host OS
+                cmd.extend(["--out", "10.0.2.2:" + str(port)])
+            else:
+                cmd.extend(["--out", "127.0.0.1:" + str(port)])
 
     if opts.tracker:
         cmd.extend(["--load-module", "tracker"])
@@ -589,8 +665,7 @@ def start_mavproxy(opts, stuff):
         cmd.append('--map')
     if opts.console:
         cmd.append('--console')
-    if opts.daemon:
-        cmd.append('--daemon')
+    cmd.append('--daemon')
     if opts.aircraft is not None:
         cmd.extend(['--aircraft', opts.aircraft])
 
@@ -648,6 +723,10 @@ parser.add_option("-C", "--sim_vehicle_sh_compatible",
                   default=False,
                   help="be compatible with the way sim_vehicle.sh works; "
                   "make this the first option")
+parser.add_option("-H", "--hil",
+                  action='store_true',
+                  default=False,
+                  help="start HIL")
 
 group_build = optparse.OptionGroup(parser, "Build options")
 group_build.add_option("-N", "--no-rebuild",
@@ -662,15 +741,15 @@ group_build.add_option("-c", "--clean",
                        action='store_true',
                        default=False,
                        help="do a make clean before building")
-group_build.add_option("", "--build_only",
-                       action='store_true',
-                       default=False,
-                       help="Only build, no sim run")
 group_build.add_option("-j", "--jobs",
                        default=None,
                        type='int',
                        help="number of processors to use during build "
                        "(default for waf : number of processor, for make : 1)")
+group_build.add_option("", "--build_only",
+                       action='store_true',
+                       default=False,
+                       help="Only build, no sim run")
 group_build.add_option("-b", "--build-target",
                        default=None,
                        type='string',
@@ -820,10 +899,6 @@ group.add_option("", "--console",
                  default=False,
                  action='store_true',
                  help="load console module on startup")
-group.add_option("", "--daemon",
-                 default=False,
-                 action='store_true',
-                 help="start mayproxy as a daemon")
 group.add_option("", "--aircraft",
                  default=None,
                  help="store state and logs in named directory")
@@ -838,6 +913,21 @@ progress("Start")
 
 if cmd_opts.sim_vehicle_sh_compatible and cmd_opts.jobs is None:
     cmd_opts.jobs = 1
+
+# validate parameters
+if cmd_opts.hil:
+    if cmd_opts.valgrind:
+        print("May not use valgrind with hil")
+        sys.exit(1)
+    if cmd_opts.callgrind:
+        print("May not use callgrind with hil")
+        sys.exit(1)
+    if cmd_opts.gdb or cmd_opts.gdb_stopped:
+        print("May not use gdb with hil")
+        sys.exit(1)
+    if cmd_opts.strace:
+        print("May not use strace with hil")
+        sys.exit(1)
 
 if cmd_opts.valgrind and (cmd_opts.gdb or cmd_opts.gdb_stopped):
     print("May not use valgrind with gdb")
@@ -895,13 +985,14 @@ frame_infos = vinfo.options_for_frame(cmd_opts.frame,
                                       cmd_opts.vehicle,
                                       cmd_opts)
 
-if frame_infos["model"] == "jsbsim":
-    check_jsbsim_version()
-
 vehicle_dir = os.path.realpath(os.path.join(find_root_dir(), cmd_opts.vehicle))
 if not os.path.exists(vehicle_dir):
     print("vehicle directory (%s) does not exist" % (vehicle_dir,))
     sys.exit(1)
+
+if not cmd_opts.hil:
+    if cmd_opts.instance == 0:
+        kill_tasks()
 
 if cmd_opts.tracker:
     start_antenna_tracker(find_autotest_dir(), cmd_opts)
@@ -922,32 +1013,41 @@ if cmd_opts.use_dir is not None:
             raise
     os.chdir(new_dir)
 
-if not cmd_opts.no_rebuild:  # i.e. we should rebuild
-    do_build(vehicle_dir, cmd_opts, frame_infos)
-
-if cmd_opts.fresh_params:
-    do_build_parameters(cmd_opts.vehicle)
-
-if cmd_opts.build_system == "waf":
-    binary_basedir = "build/sitl"
-    vehicle_binary = os.path.join(find_root_dir(),
-                                  binary_basedir,
-                                  frame_infos["waf_target"])
+if cmd_opts.hil:
+    # (unlikely)
+    run_in_terminal_window(find_autotest_dir(),
+                           "JSBSim",
+                           [os.path.join(find_autotest_dir(),
+                                         "jsb_sim/runsim.py"),
+                            "--home", location,
+                            "--speedup=" + str(cmd_opts.speedup)])
 else:
-    vehicle_binary = os.path.join(vehicle_dir, cmd_opts.vehicle + ".elf")
+    if not cmd_opts.no_rebuild:  # i.e. we should rebuild
+        do_build(vehicle_dir, cmd_opts, frame_infos)
 
-if not os.path.exists(vehicle_binary):
-    print("Vehicle binary (%s) does not exist" % (vehicle_binary,))
-    sys.exit(1)
+    if cmd_opts.fresh_params:
+        do_build_parameters(cmd_opts.vehicle)
 
-if cmd_opts.build_only:
-    sys.exit()
+    if cmd_opts.build_system == "waf":
+        binary_basedir = "build/sitl"
+        vehicle_binary = os.path.join(find_root_dir(),
+                                      binary_basedir,
+                                      frame_infos["waf_target"])
+    else:
+        vehicle_binary = os.path.join(vehicle_dir, cmd_opts.vehicle + ".elf")
 
-start_vehicle(vehicle_binary,
-              find_autotest_dir(),
-              cmd_opts,
-              frame_infos,
-              location)
+    if not os.path.exists(vehicle_binary):
+        print("Vehicle binary (%s) does not exist" % (vehicle_binary,))
+        sys.exit(1)
+
+    if cmd_opts.build_only:
+        sys.exit(0)
+
+    start_vehicle(vehicle_binary,
+                  find_autotest_dir(),
+                  cmd_opts,
+                  frame_infos,
+                  location)
 
 if cmd_opts.delay_start:
     progress("Sleeping for %f seconds" % (cmd_opts.delay_start,))

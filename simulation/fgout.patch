@@ -1,0 +1,8 @@
+diff --git a/Tools/autotest/jsb_sim/fgout_template.xml b/Tools/autotest/jsb_sim/fgout_template.xml
+index 0e8193b9f..5e752e3b8 100644
+--- a/Tools/autotest/jsb_sim/fgout_template.xml
++++ b/Tools/autotest/jsb_sim/fgout_template.xml
+@@ -1,2 +1,2 @@
+ <?xml version="1.0"?>
+-<output name="localhost" type="FLIGHTGEAR" port="%(FGOUTPORT)s" protocol="udp" rate="1000"/>
++<output name="docker.for.mac.localhost" type="FLIGHTGEAR" port="%(FGOUTPORT)s" protocol="udp" rate="1000"/>
