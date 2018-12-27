@@ -58,3 +58,16 @@ If you have problems installing the dronekit library, see http://python.dronekit
 - Overlay for Ardupilot to allow arm and drop from altitude, instead of patch file
 - Improve SITL simulation of air pressure decrease with altitude
 
+## Links
+- SITL
+-- Software in the loop.  Replaces the Pixhawk hardware for testing
+-- Summary: http://ardupilot.org/dev/docs/sitl-simulator-software-in-the-loop.html
+-- Advanced testing: http://ardupilot.org/dev/docs/using-sitl-for-ardupilot-testing.html
+- Running as a daemon (for Docker containers)
+-- https://ardupilot.github.io/MAVProxy/html/getting_started/starting.html
+- Connecting to the Ardupilot firmware
+-- MavLINK protocol: http://ardupilot.org/dev/docs/mavlink-commands.html
+-- Python Dronekit (built on MavLINK): http://python.dronekit.io/
+- Physics Simulator used in SITL
+-- https://github.com/JSBSim-Team/jsbsim
+
