@@ -52,7 +52,7 @@ If you have problems installing the dronekit library, see http://python.dronekit
 ## TODO
 - Get local flightgear connecting to sitl on docker
 - output status to log when Waiting for arm...
-- Dockerfile - Stop ardupilot recompile on run
+- <del>Dockerfile - Stop ardupilot recompile on run</del>
 - Magically increase GPS altitude to simulate a balloon lift
 - Fix height/altitude in sitl - should not = home
 - Overlay for Ardupilot to allow arm and drop from altitude, instead of patch file

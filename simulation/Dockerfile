@@ -18,6 +18,8 @@ RUN chmod a+x /root/ardupilot/Tools/autotest/sim_eesa.py
 COPY on_ground.patch /root/ardupilot/sitl_alt.patch
 RUN cd /root/ardupilot; git apply sitl_alt.patch
 WORKDIR /root/ardupilot/ArduPlane
+RUN /root/ardupilot/Tools/autotest/sim_eesa.py --build_only
 EXPOSE 9000:9000/udp
 EXPOSE 5503:5503/udp
-ENTRYPOINT /root/ardupilot/Tools/autotest/sim_eesa.py --out $UDP_HOST:9000 --daemon -L $LOCATION
+WORKDIR /root/ardupilot/ArduPlane
+ENTRYPOINT /root/ardupilot/Tools/autotest/sim_eesa.py --no-rebuild --out $UDP_HOST:9000 --daemon -L $LOCATION
