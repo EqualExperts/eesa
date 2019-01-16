@@ -14,9 +14,9 @@ Use a weather balloon to lift a fixed-wing UAV to 30km and have it autonomously 
 
 The flight computer is a Pixhawk 2.1 with embedded Intel Edison.
 
-The Edison runs Ubuntu linux.  [Dronekit](http://dronekit.io/) python scripts communicate via MAVLink to control the Pixhawk 2.1 flight computer.
+The Edison runs Ubuntu linux.  [Dronekit](http://dronekit.io/) python scripts communicate via MAVLink to control the Pixhawk 2.1 flight computer.  See [simulation](./simulation) for more technical details.
 
-The two UAV planes under test are the Buffalo FX-79 with custom inverted V tail and a 2m clone of the Shadow 200 drone.
+The fixed-wing UAVs under test are the Buffalo FX-79 with custom inverted V tail, a 2m clone of the Shadow 200 drone and the RMRC Anaconda.
 
 ## Initial script requirements
 
