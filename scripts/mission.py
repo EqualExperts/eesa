@@ -10,39 +10,18 @@ import random
 from flight import Flight
 from log import FlightLog
 
-# TODO Nicer way to import bleeding edge libraries?
-sys.path.append("/home/apsync/dronekit-python/")
-
 from dronekit import connect as drone_connect, mavutil, VehicleMode
 
 class Drone(object):
-
-	# Iceland
-	home = { 'lat': 64.098, 'lng': -21.047, 'alt': 140, 'release_alt': 30000 }
-	# Devils Beef Tub
-	# home = { 'lat': 55.404, 'lng': -3.486, 'alt': 440, 'release_alt': 440 }
-	# Penicuik
-	# home = { 'lat': 55.807, 'lng': -3.248, 'alt': 302, 'release_alt': 302 }
-	# Otley Road
-	# home = { 'lat': 53.880447, 'lng': -1.795451, 'alt': 312, 'release_alt': 312 }
+	missionParameters = loadMissionParameters()
+	aircraft = loadAircraftConfiguration()
 
 	def __init__(self, connection_string):
 		self.connection_string = connection_string
 		signal.signal(signal.SIGINT, self.shutdown)
 		signal.signal(signal.SIGTERM, self.shutdown)
 		self.stopped = False
-		## skyhunter
-		# self.closed_pwm = 1890
-		# self.open_pwm = 1280
-		## x5
-		self.closed_pwm = 1800
-		self.open_pwm = 1250
-		self.twitch=10
-		self.release_servo_number = 9 # aux 1
-		self.test_servo_numbers = []
-		# self.test_servo_numbers = [11,12,13]
-		self.release_altitude = self.home['release_alt']
-		self.current_test_servo_pwm = self.closed_pwm
+		self.current_test_servo_pwm = self.aircraft.closed_pwm
 		self.released = False
 		self.flight_mission_started = False
 
@@ -82,7 +61,7 @@ class Drone(object):
 
 	# Main mission - should be executed after release
 	def start_flight_mission(self):
-		self.flight = Flight(self.connection, self.home)
+		self.flight = Flight(self.connection, self.missionParameters)
 		self.flight.takeoff()
 
 	# Twitches servo 9 (aux 1) a random amount to keep it warm on the way up
@@ -119,6 +98,8 @@ class Drone(object):
 		while not self.connection.is_armable and not self.stopped:
 			self.log.logInfo(self.connection, "Initialising...." )
 			time.sleep(5)
+
+		self.release_altitude = self.missionParameters.launch.altitude + self.missionParameters.release_height
 
 		self.log.logInfo(self.connection, "Desired release altitude = %s" % self.release_altitude )
 
@@ -171,7 +152,7 @@ def start_flight(connection_string):
 	@connection.on_attribute('location.global_frame')
 	def listener_position(vehicle, name, message):
 		alt = message.alt
-		rel_alt = alt - drone.home['alt']
+		rel_alt = alt - drone.missionParameters.launch.altitude
 		ts = int(time.time()*10)
 		if ts % 25 == 0:
 			drone.log.logInfo(drone.connection, "Rel Alt %s" % rel_alt )
