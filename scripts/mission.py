@@ -9,19 +9,21 @@ import math
 import random
 from flight import Flight
 from log import FlightLog
+import json
 
 from dronekit import connect as drone_connect, mavutil, VehicleMode
 
 class Drone(object):
-	missionParameters = loadMissionParameters()
-	aircraft = loadAircraftConfiguration()
 
 	def __init__(self, connection_string):
+		self.mission_parameters = self.load_mission_parameters()
+		print( json.dumps(self.mission_parameters))
+		self.aircraft = self.load_aircraft_configuration()
 		self.connection_string = connection_string
 		signal.signal(signal.SIGINT, self.shutdown)
 		signal.signal(signal.SIGTERM, self.shutdown)
 		self.stopped = False
-		self.current_test_servo_pwm = self.aircraft.closed_pwm
+		self.current_test_servo_pwm = self.aircraft['closed_pwm']
 		self.released = False
 		self.flight_mission_started = False
 
@@ -29,6 +31,14 @@ class Drone(object):
 		self.connection = None
 
 		self.log = FlightLog('mission.log')
+
+	def load_mission_parameters(self):
+		with open('../locations/penicuik-penicuik.json', 'r') as f:
+			return json.load(f)
+
+	def load_aircraft_configuration(self):
+		with open('../aircraft/skyhunter.json', 'r') as f:
+			return json.load(f)
 
 	def set_servo(self, servo_number, pwm_value):
 		pwm_value_int = int(pwm_value)
@@ -46,7 +56,7 @@ class Drone(object):
 	# Moves servo 9 (aux 1) to release payload
 	def release_payload(self):
 		self.log.logInfo(self.connection, "!!!!!RELEASING PAYLOAD!!!!!")
-		start_new_thread(self.set_servo, (self.release_servo_number, self.open_pwm,))
+		start_new_thread(self.set_servo, (self.aircraft['release_servo_number'], self.aircraft['open_pwm'],))
 		self.released = True
 		if not self.flight_mission_started:
 			self.flight_mission_started = True
@@ -55,13 +65,13 @@ class Drone(object):
 	# Moves servo 9 (aux 1) to closed to hold payload
 	def lock_payload(self):
 		self.log.logInfo(self.connection, "!!!!!LOCKING PAYLOAD!!!!!")
-		start_new_thread(self.set_servo, (self.release_servo_number, self.closed_pwm,))
+		start_new_thread(self.set_servo, (self.aircraft['release_servo_number'], self.aircraft['closed_pwm'],))
 		self.released = False
 
 
 	# Main mission - should be executed after release
 	def start_flight_mission(self):
-		self.flight = Flight(self.connection, self.missionParameters)
+		self.flight = Flight(self.connection, self.mission_parameters)
 		self.flight.takeoff()
 
 	# Twitches servo 9 (aux 1) a random amount to keep it warm on the way up
@@ -76,12 +86,12 @@ class Drone(object):
 	def move_test_servos(self):
 		if not self.released:
 			self.log.logDebug(self.connection, "moving test servos")
-			for servo_number in self.test_servo_numbers:
+			for servo_number in self.aircraft['test_servo_numbers']:
 				start_new_thread(self.set_servo, (servo_number, self.current_test_servo_pwm,))
-			if self.current_test_servo_pwm != self.closed_pwm:
-				self.current_test_servo_pwm = self.closed_pwm
+			if self.current_test_servo_pwm != self.aircraft['closed_pwm']:
+				self.current_test_servo_pwm = self.aircraft['closed_pwm']
 			else:
-				self.current_test_servo_pwm = self.open_pwm
+				self.current_test_servo_pwm = self.aircraft['open_pwm']
 
 	def connect(self):
 		self.connection = drone_connect(self.connection_string, wait_ready=True)
@@ -99,7 +109,7 @@ class Drone(object):
 			self.log.logInfo(self.connection, "Initialising...." )
 			time.sleep(5)
 
-		self.release_altitude = self.missionParameters.launch.altitude + self.missionParameters.release_height
+		self.release_altitude = self.mission_parameters['launch']['altitude'] + self.mission_parameters['release']['height']
 
 		self.log.logInfo(self.connection, "Desired release altitude = %s" % self.release_altitude )
 
@@ -152,7 +162,7 @@ def start_flight(connection_string):
 	@connection.on_attribute('location.global_frame')
 	def listener_position(vehicle, name, message):
 		alt = message.alt
-		rel_alt = alt - drone.missionParameters.launch.altitude
+		rel_alt = alt - drone.mission_parameters['launch']['altitude']
 		ts = int(time.time()*10)
 		if ts % 25 == 0:
 			drone.log.logInfo(drone.connection, "Rel Alt %s" % rel_alt )

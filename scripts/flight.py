@@ -26,9 +26,9 @@ class Flight(object):
 
 	altitude_step=0.9
 
-	def __init__(self, vehicle, missionParameters):
+	def __init__(self, vehicle, mission_parameters):
 		self.vehicle = vehicle
-		self.missionParameters = missionParameters
+		self.mission_parameters = mission_parameters
 		frame=self.vehicle.location.global_frame
 		self.alt=frame.alt
 		self.lat=frame.lat
@@ -114,7 +114,7 @@ class Flight(object):
 		self.vehicle.parameters['TRIM_THROTTLE']=33
 		self.vehicle.parameters['THR_MAX']=75
 
-		self.goto_altitude(self.missionParameters.landing.altitude + self.missionParameters.landing.safe_height)
+		self.goto_altitude(self.mission_parameters['landing']['altitude'] + self.mission_parameters['landing']['safe_height'])
 
 		## Keep the script alive until landing
 		self.log.logInfo(self.vehicle, "alt = "+str(self.alt))
@@ -134,7 +134,7 @@ class Flight(object):
 	def load_mission(self):
 		lat=self.vehicle.location.global_frame.lat
 		lng=self.vehicle.location.global_frame.lon
-		take_off_alt = self.missionParameters.launch.altitude + self.missionParameters.release.height
+		take_off_alt = self.mission_parameters['launch']['altitude'] + self.mission_parameters['release']['height']
 		cmds = self.vehicle.commands
 		cmds.clear()
 		self.log.logInfo(self.vehicle, "Loading mission with takeoff from %s to %s meters" % (self.alt, take_off_alt))
@@ -146,7 +146,7 @@ class Flight(object):
 	def goto_altitude(self, target_altitude):
 		self.log.logInfo(self.vehicle, "Heading to target altitude %s meters" % (target_altitude) )
 		self.change_mode("GUIDED")
-		point = LocationGlobal(self.missionParameters.landing.latitude, self.missionParameters.landing.longitude,
+		point = LocationGlobal(self.mission_parameters['landing']['latitude'], self.mission_parameters['landing']['longitude'],
 							   target_altitude)
 		self.vehicle.simple_goto(point)
 
@@ -174,8 +174,7 @@ class Flight(object):
 				self.log.logInfo(self.vehicle, "Waiting for home location ...")
 				tims.sleep(1)
 		self.log.logInfo(self.vehicle, "Old home location: %s" % self.vehicle.home_location)
-		self.vehicle.home_location = LocationGlobal(self.missionParameters.landing.latitude,
-													self.missionParameters.landing.longitude, self.home['alt'])
+		self.vehicle.home_location = LocationGlobal(self.mission_parameters['landing']['latitude'], self.mission_parameters['landing']['longitude'], self.mission_parameters['landing']['altitude'])
 		while not self.vehicle.home_location:
 			cmds = self.vehicle.commands
 			cmds.download()
