@@ -1,0 +1,20 @@
+{
+  "launch": {
+    "name": "Otley Road",
+    "latitude": 53.880447,
+    "longitude": -1.795298,
+    "altitude": 312,
+    "safe_height": 30
+  },
+  "release": {
+    "height": 30,
+    "max-time": 180
+  },
+  "landing": {
+    "name": "Otley Road",
+    "latitude": 53.880447,
+    "longitude": -1.795298,
+    "altitude": 312,
+    "safe_height": 30
+  }
+}
