@@ -12,7 +12,7 @@ RUN pip install MAVProxy
 ENV LOCATION ICEL
 ENV UDP_HOST docker.for.mac.localhost
 ENV FG_PORT 5503
-ENV START_ALTITUDE 30000
+# ENV START_ALTITUDE 30000
 RUN cd ~; git clone https://github.com/ArduPilot/ardupilot.git; cd ardupilot; git submodule update --init --recursive
 RUN cd ~/ardupilot; Tools/scripts/install-prereqs-ubuntu.sh -y; . ~/.profile
 COPY locations.txt /root/ardupilot/Tools/autotest/locations.txt

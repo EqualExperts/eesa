@@ -9,40 +9,21 @@ import math
 import random
 from flight import Flight
 from log import FlightLog
-
-# TODO Nicer way to import bleeding edge libraries?
-sys.path.append("/home/apsync/dronekit-python/")
+import json
 
 from dronekit import connect as drone_connect, mavutil, VehicleMode
 
 class Drone(object):
 
-	# Iceland
-	home = { 'lat': 64.098, 'lng': -21.047, 'alt': 140, 'release_alt': 30000 }
-	# Devils Beef Tub
-	# home = { 'lat': 55.404, 'lng': -3.486, 'alt': 440, 'release_alt': 440 }
-	# Penicuik
-	# home = { 'lat': 55.807, 'lng': -3.248, 'alt': 302, 'release_alt': 302 }
-	# Otley Road
-	# home = { 'lat': 53.880447, 'lng': -1.795451, 'alt': 312, 'release_alt': 312 }
-
 	def __init__(self, connection_string):
+		self.mission_parameters = self.load_mission_parameters()
+		print( json.dumps(self.mission_parameters))
+		self.aircraft = self.load_aircraft_configuration()
 		self.connection_string = connection_string
 		signal.signal(signal.SIGINT, self.shutdown)
 		signal.signal(signal.SIGTERM, self.shutdown)
 		self.stopped = False
-		## skyhunter
-		# self.closed_pwm = 1890
-		# self.open_pwm = 1280
-		## x5
-		self.closed_pwm = 1800
-		self.open_pwm = 1250
-		self.twitch=10
-		self.release_servo_number = 9 # aux 1
-		self.test_servo_numbers = []
-		# self.test_servo_numbers = [11,12,13]
-		self.release_altitude = self.home['release_alt']
-		self.current_test_servo_pwm = self.closed_pwm
+		self.current_test_servo_pwm = self.aircraft['closed_pwm']
 		self.released = False
 		self.flight_mission_started = False
 
@@ -50,6 +31,14 @@ class Drone(object):
 		self.connection = None
 
 		self.log = FlightLog('mission.log')
+
+	def load_mission_parameters(self):
+		with open('../locations/penicuik-penicuik.json', 'r') as f:
+			return json.load(f)
+
+	def load_aircraft_configuration(self):
+		with open('../aircraft/skyhunter.json', 'r') as f:
+			return json.load(f)
 
 	def set_servo(self, servo_number, pwm_value):
 		pwm_value_int = int(pwm_value)
@@ -67,7 +56,7 @@ class Drone(object):
 	# Moves servo 9 (aux 1) to release payload
 	def release_payload(self):
 		self.log.logInfo(self.connection, "!!!!!RELEASING PAYLOAD!!!!!")
-		start_new_thread(self.set_servo, (self.release_servo_number, self.open_pwm,))
+		start_new_thread(self.set_servo, (self.aircraft['release_servo_number'], self.aircraft['open_pwm'],))
 		self.released = True
 		if not self.flight_mission_started:
 			self.flight_mission_started = True
@@ -76,13 +65,13 @@ class Drone(object):
 	# Moves servo 9 (aux 1) to closed to hold payload
 	def lock_payload(self):
 		self.log.logInfo(self.connection, "!!!!!LOCKING PAYLOAD!!!!!")
-		start_new_thread(self.set_servo, (self.release_servo_number, self.closed_pwm,))
+		start_new_thread(self.set_servo, (self.aircraft['release_servo_number'], self.aircraft['closed_pwm'],))
 		self.released = False
 
 
 	# Main mission - should be executed after release
 	def start_flight_mission(self):
-		self.flight = Flight(self.connection, self.home)
+		self.flight = Flight(self.connection, self.mission_parameters)
 		self.flight.takeoff()
 
 	# Twitches servo 9 (aux 1) a random amount to keep it warm on the way up
@@ -97,12 +86,12 @@ class Drone(object):
 	def move_test_servos(self):
 		if not self.released:
 			self.log.logDebug(self.connection, "moving test servos")
-			for servo_number in self.test_servo_numbers:
+			for servo_number in self.aircraft['test_servo_numbers']:
 				start_new_thread(self.set_servo, (servo_number, self.current_test_servo_pwm,))
-			if self.current_test_servo_pwm != self.closed_pwm:
-				self.current_test_servo_pwm = self.closed_pwm
+			if self.current_test_servo_pwm != self.aircraft['closed_pwm']:
+				self.current_test_servo_pwm = self.aircraft['closed_pwm']
 			else:
-				self.current_test_servo_pwm = self.open_pwm
+				self.current_test_servo_pwm = self.aircraft['open_pwm']
 
 	def connect(self):
 		self.connection = drone_connect(self.connection_string, wait_ready=True)
@@ -119,6 +108,8 @@ class Drone(object):
 		while not self.connection.is_armable and not self.stopped:
 			self.log.logInfo(self.connection, "Initialising...." )
 			time.sleep(5)
+
+		self.release_altitude = self.mission_parameters['launch']['altitude'] + self.mission_parameters['release']['height']
 
 		self.log.logInfo(self.connection, "Desired release altitude = %s" % self.release_altitude )
 
@@ -171,7 +162,7 @@ def start_flight(connection_string):
 	@connection.on_attribute('location.global_frame')
 	def listener_position(vehicle, name, message):
 		alt = message.alt
-		rel_alt = alt - drone.home['alt']
+		rel_alt = alt - drone.mission_parameters['launch']['altitude']
 		ts = int(time.time()*10)
 		if ts % 25 == 0:
 			drone.log.logInfo(drone.connection, "Rel Alt %s" % rel_alt )
@@ -179,7 +170,7 @@ def start_flight(connection_string):
 			drone.flight.alt = alt
 			drone.flight.lng = message.lon
 			drone.flight.lat = message.lat	
-		if not drone.released and alt >= drone.release_altitude:
+		if not drone.released and rel_alt >= drone.mission_parameters['release']['height']:
 			drone.log.logInfo(drone.connection, "Releasing payload at %s metres relative to home" % rel_alt)
 			drone.release_payload()
 		elif not drone.released and drone.release_now():

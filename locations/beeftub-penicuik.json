@@ -1,0 +1,20 @@
+{
+  "launch": {
+    "name": "Devil's Beef Tub",
+    "latitude": 55.404067,
+    "longitude": -3.488600,
+    "altitude": 487,
+    "safe_height": 30
+  },
+  "release": {
+    "height": 30,
+    "max-time": 180
+  },
+  "landing": {
+    "name": "Penicuik",
+    "latitude": 55.807617,
+    "longitude": -3.248617,
+    "altitude": 262,
+    "safe_height": 30
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Skyhunter",
+  "closed_pwm": 1890,
+  "open_pwm": 1280,
+  "twitch": 10,
+  "release_servo_number": 9,
+  "test_servo_numbers": []
+}

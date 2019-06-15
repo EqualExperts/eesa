@@ -1,0 +1,20 @@
+{
+  "launch": {
+    "name": "Penicuik",
+    "latitude": 55.807617,
+    "longitude": -3.248617,
+    "altitude": 262,
+    "safe_height": 30
+  },
+  "release": {
+    "height": 30,
+    "max-time": 90
+  },
+  "landing": {
+    "name": "Penicuik",
+    "latitude": 55.807617,
+    "longitude": -3.248617,
+    "altitude": 262,
+    "safe_height": 30
+  }
+}
