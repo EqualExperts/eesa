@@ -170,7 +170,7 @@ def start_flight(connection_string):
 			drone.flight.alt = alt
 			drone.flight.lng = message.lon
 			drone.flight.lat = message.lat	
-		if not drone.released and alt >= drone.release_altitude:
+		if not drone.released and rel_alt >= drone.mission_parameters['release']['height']:
 			drone.log.logInfo(drone.connection, "Releasing payload at %s metres relative to home" % rel_alt)
 			drone.release_payload()
 		elif not drone.released and drone.release_now():
