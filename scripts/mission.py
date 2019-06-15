@@ -10,15 +10,23 @@ import random
 from flight import Flight
 from log import FlightLog
 import json
+import argparse
 
 from dronekit import connect as drone_connect, mavutil, VehicleMode
 
 class Drone(object):
 
 	def __init__(self, connection_string):
-		self.mission_parameters = self.load_mission_parameters()
+		parser = argparse.ArgumentParser(description='Process some integers.')
+		parser.add_argument('--aircraft', dest='aircraft', default='skyhunter', help='The aircraft type.  Default skyhunter')
+		parser.add_argument('--takeoff', default='penicuik', help='The primary takeoff site location name.  Default penicuik')
+		parser.add_argument('--landing', default='penicuik', help='The primary landing site location name.  Default penicuik')
+		args = parser.parse_args()
+
+		self.mission_parameters = self.load_mission_parameters(args.takeoff, args.landing)
 		print( json.dumps(self.mission_parameters))
-		self.aircraft = self.load_aircraft_configuration()
+		self.aircraft = self.load_aircraft_configuration(args.aircraft)
+		print( 'Loaded aircraft configuration for '+self.aircraft['name'] )
 		self.connection_string = connection_string
 		signal.signal(signal.SIGINT, self.shutdown)
 		signal.signal(signal.SIGTERM, self.shutdown)
@@ -32,12 +40,12 @@ class Drone(object):
 
 		self.log = FlightLog('mission.log')
 
-	def load_mission_parameters(self):
-		with open('../locations/penicuik-penicuik.json', 'r') as f:
+	def load_mission_parameters(self, takeoff_location, landing_location):
+		with open('../locations/'+takeoff_location+'-'+landing_location+'.json', 'r') as f:
 			return json.load(f)
 
-	def load_aircraft_configuration(self):
-		with open('../aircraft/skyhunter.json', 'r') as f:
+	def load_aircraft_configuration(self, aircraft):
+		with open('../aircraft/'+aircraft+'.json', 'r') as f:
 			return json.load(f)
 
 	def set_servo(self, servo_number, pwm_value):
