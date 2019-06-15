@@ -58,7 +58,9 @@ If you have problems installing the dronekit library, see http://python.dronekit
 - Overlay for Ardupilot to allow arm and drop from altitude, instead of patch file
 - Improve SITL simulation of air pressure decrease with altitude
 - runtime configuration to switch from macos to linux without having two images
+- Export Edison build image
 - unit tests for mission.py and flight.py
+    - speed up SITL so the tests can be run as a pre-commit
     - test release at 30,000m
     - test emeergency actions
         - loss of GPS
